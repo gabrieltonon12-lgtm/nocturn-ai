@@ -1,13 +1,28 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
-import { getVideos } from '../../lib/db'
-const JWT_SECRET = process.env.JWT_SECRET || 'nocturnai_secret_2025'
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const token = req.headers.authorization?.replace('Bearer ', '')
-  if (!token) return res.status(401).json({ error: 'Token necessario' })
-  let decoded: any
-  try { decoded = jwt.verify(token, JWT_SECRET) } catch { return res.status(401).json({ error: 'Token invalido' }) }
-  const videos = getVideos()
-  const userVideos = decoded.role === 'admin' ? videos : videos.filter((v: any) => v.userId === decoded.id)
-  res.status(200).json({ videos: userVideos.reverse() })
+import { getVideos, ensureAdmin } from '../../lib/db'
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
+  
+  try {
+    ensureAdmin()
+    const auth = req.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token obrigatório' })
+    const token = auth.split(' ')[1]
+    const secret = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
+    
+    let decoded: any
+    try {
+      decoded = jwt.verify(token, secret)
+    } catch {
+      return res.status(401).json({ error: 'Token inválido' })
+    }
+    
+    const videos = getVideos(decoded.id)
+    res.status(200).json({ videos })
+  } catch (e: any) {
+    console.error('Videos error:', e)
+    res.status(500).json({ error: 'Erro ao buscar vídeos' })
+  }
 }
