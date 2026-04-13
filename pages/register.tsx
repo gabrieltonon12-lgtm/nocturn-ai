@@ -2,6 +2,9 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+
+declare global { interface Window { ttq: any } }
+
 export default function Register() {
   const router = useRouter()
   const { plan } = router.query
@@ -10,8 +13,18 @@ export default function Register() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const planNames: Record<string,string> = {
+    starter:'Starter — R\$47/mês',
+    pro:'Pro — R\$97/mês',
+    enterprise:'Enterprise — R\$297/mês'
+  }
+  const planValues: Record<string,number> = { starter: 47, pro: 97, enterprise: 297 }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError('')
+    // TikTok pixel: InitiateCheckout
+    try { if(window.ttq) window.ttq.track('InitiateCheckout', { value: planValues[plan as string] || 97, currency: 'BRL', content_type: 'product', content_id: plan || 'pro' }) } catch {}
     try {
       const res = await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name,email,password,plan:plan||'starter'}) })
       const data = await res.json()
@@ -21,6 +34,7 @@ export default function Register() {
       router.push('/dashboard')
     } catch (err: any) { setError(err.message) } finally { setLoading(false) }
   }
+
   const s: Record<string,React.CSSProperties> = {
     wrap:{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',background:'#080b10'},
     card:{background:'#0e1219',border:'1px solid #1e2840',borderRadius:'16px',padding:'40px',width:'100%',maxWidth:'420px'},
@@ -36,7 +50,7 @@ export default function Register() {
     btn:{background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',color:'#fff',border:'none',borderRadius:'8px',padding:'13px',fontSize:'14px',fontWeight:700 as any,cursor:'pointer',marginTop:'4px'},
     link:{textAlign:'center' as any,fontSize:'13px',color:'#4a5568',marginTop:'20px'},
   }
-  const planNames: Record<string,string> = {starter:'Starter — R$47/mês',pro:'Pro — R$97/mês',enterprise:'Enterprise — R$297/mês'}
+
   return (<><Head><title>Criar Conta — NOCTURN.AI</title></Head>
     <div style={s.wrap}><div style={s.card}>
       <div style={s.logo}><div style={s.logoIcon}>DC</div><div style={{fontSize:'18px',fontWeight:800,color:'#f0f2f8'}}>NOCTURN.AI</div></div>
@@ -47,8 +61,9 @@ export default function Register() {
         <div style={s.field}><label style={s.label}>Nome</label><input style={s.input} type="text" value={name} onChange={e=>setName(e.target.value)} required placeholder="Seu nome"/></div>
         <div style={s.field}><label style={s.label}>Email</label><input style={s.input} type="email" value={email} onChange={e=>setEmail(e.target.value)} required placeholder="seu@email.com"/></div>
         <div style={s.field}><label style={s.label}>Senha</label><input style={s.input} type="password" value={password} onChange={e=>setPassword(e.target.value)} required placeholder="Mínimo 8 caracteres" minLength={8}/></div>
-        <button style={s.btn} type="submit" disabled={loading}>{loading ? 'Criando...' : 'Criar conta'}</button>
+        <button style={s.btn} type="submit" disabled={loading}>{loading?'Criando...':'Criar conta'}</button>
       </form>
       <p style={s.link}>Já tem conta? <Link href="/login" style={{color:'#ff3c5c'}}>Entrar</Link></p>
-    </div></div></>)
+    </div></div>
+  </>)
 }
