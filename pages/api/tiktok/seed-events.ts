@@ -1,64 +1,55 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createHash } from 'crypto'
 
-const PIXEL_ID = 'D7END4RC77U8N8PUBHCG'
-const ACCESS_TOKEN = '2417bf01ceeb0d33507135be36acfe37cc3e7899'
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Internal test endpoint — fires seed events so TikTok Ads unlocks optimization events
-  // Safe to call multiple times — uses unique event_ids
   try {
+    const PIXEL_ID = 'D7END4RC77U8N8PUBHCG'
+    const ACCESS_TOKEN = '2417bf01ceeb0d33507135be36acfe37cc3e7899'
     const email = 'gabrieltonon12@gmail.com'
     const emailHash = createHash('sha256').update(email.toLowerCase()).digest('hex')
-    const now = new Date().toISOString()
+    const now = Math.floor(Date.now() / 1000) // Unix timestamp
     const base = Date.now()
 
     const context = {
       page: { url: 'https://nocturn-ai.vercel.app' },
-      ip: req.headers['x-forwarded-for']?.toString() || '177.55.100.1',
+      ip: req.headers['x-forwarded-for']?.toString()?.split(',')[0] || '177.55.100.1',
       user_agent: req.headers['user-agent'] || 'Mozilla/5.0 Chrome/120',
       user: { email: emailHash },
     }
 
+    // TikTok Events API v1.3 — correct field names
     const events = [
       {
-        event: 'CompletePayment',
+        event_name: 'CompletePayment',
         event_id: `seed_payment_${base}`,
-        timestamp: now,
+        event_time: now,
         context,
-        properties: { currency: 'BRL', value: 97, content_id: 'pro', content_type: 'product', content_name: 'NOCTURN.AI Pro', quantity: 1 },
+        properties: { currency: 'BRL', value: '97', content_id: 'nocturn_pro', content_type: 'product', content_name: 'NOCTURN.AI Pro', quantity: 1 },
       },
       {
-        event: 'Subscribe',
-        event_id: `seed_subscribe_${base + 1}`,
-        timestamp: now,
+        event_name: 'Subscribe',
+        event_id: `seed_sub_${base + 1}`,
+        event_time: now,
         context,
-        properties: { currency: 'BRL', value: 97, content_name: 'NOCTURN.AI Pro' },
+        properties: { currency: 'BRL', value: '97', content_name: 'NOCTURN.AI Pro' },
       },
       {
-        event: 'ViewContent',
+        event_name: 'ViewContent',
         event_id: `seed_view_${base + 2}`,
-        timestamp: now,
+        event_time: now,
         context,
-        properties: { content_name: 'NOCTURN.AI Landing Page', content_type: 'product' },
-      },
-      {
-        event: 'AddToWishlist',
-        event_id: `seed_wish_${base + 3}`,
-        timestamp: now,
-        context,
-        properties: { content_name: 'NOCTURN.AI Pro', currency: 'BRL', value: 97 },
+        properties: { content_name: 'NOCTURN.AI Landing', content_type: 'product', currency: 'BRL', value: '0' },
       },
     ]
 
-    const ttRes = await fetch('https://business-api.tiktok.com/open_api/v1.3/pixel/track/', {
+    const ttRes = await fetch(`https://business-api.tiktok.com/open_api/v1.3/event/track/`, {
       method: 'POST',
       headers: { 'Access-Token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pixel_code: PIXEL_ID, data: events }),
+      body: JSON.stringify({ pixel_code: PIXEL_ID, event: events }),
     })
     const ttData = await ttRes.json()
-    console.log('TikTok seed events:', JSON.stringify(ttData))
-    res.status(200).json({ ok: true, tiktok: ttData, events_fired: events.map(e => e.event) })
+    console.log('TikTok seed events result:', JSON.stringify(ttData))
+    res.status(200).json({ ok: true, tiktok: ttData, events_fired: events.map(e => e.event_name) })
   } catch(e: any) {
     console.error('Seed error:', e)
     res.status(500).json({ error: e.message })
