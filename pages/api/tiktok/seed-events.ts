@@ -9,21 +9,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const email = 'gabrieltonon12@gmail.com'
     const emailHash = createHash('sha256').update(email.toLowerCase()).digest('hex')
-    const now = Math.floor(Date.now() / 1000)
+    const ts = new Date().toISOString()
     const base = Date.now()
 
     const context = {
       page: { url: 'https://nocturn-ai.vercel.app' },
       ip: '177.55.100.10',
-      user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120',
+      user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120',
       user: { email: emailHash },
     }
 
-    const events = [
+    // Exact structure for /v1.3/pixel/track/ endpoint
+    const data = [
       {
+        type: 'track',
         event: 'CompletePayment',
         event_id: `pay_${base}`,
-        event_time: now,
+        timestamp: ts,
         context,
         properties: {
           currency: 'BRL',
@@ -35,9 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       },
       {
+        type: 'track',
         event: 'Subscribe',
         event_id: `sub_${base + 1}`,
-        event_time: now,
+        timestamp: ts,
         context,
         properties: {
           currency: 'BRL',
@@ -49,21 +52,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const ttRes = await fetch('https://business-api.tiktok.com/open_api/v1.3/pixel/track/', {
       method: 'POST',
-      headers: {
-        'Access-Token': ACCESS_TOKEN,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        pixel_code: PIXEL_ID,
-        test_event_code: TEST_EVENT_CODE,
-        data: events,
-      }),
+      headers: { 'Access-Token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pixel_code: PIXEL_ID, test_event_code: TEST_EVENT_CODE, data }),
     })
     const ttData = await ttRes.json()
-    console.log('TikTok test events result:', JSON.stringify(ttData))
-    res.status(200).json({ ok: true, tiktok: ttData, code: ttData.code, msg: ttData.message })
+    console.log('TikTok result:', JSON.stringify(ttData))
+    res.status(200).json({ ok: true, code: ttData.code, msg: ttData.message, detail: ttData })
   } catch(e: any) {
-    console.error('Seed error:', e)
     res.status(500).json({ error: e.message })
   }
 }
