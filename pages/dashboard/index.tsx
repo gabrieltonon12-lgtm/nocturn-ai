@@ -204,11 +204,11 @@ export default function Dashboard() {
             <div style={{background:'#141920',border:'1px solid #1e2840',borderRadius:'10px',padding:'12px',marginBottom:'10px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
                 <div style={{fontSize:'9px',color:'#4a5568',letterSpacing:'1.5px',textTransform:'uppercase',fontFamily:'monospace'}}>Creditos</div>
-                <div style={{fontSize:'11px',fontWeight:700,color:creditPct<25?'#ff3c5c':creditPct<50?'#ffb020':'#00d084'}}>{maxCredits===99999?'Ilimitado':`${user.credits??0}/${maxCredits}`}</div>
+                <div style={{fontSize:'11px',fontWeight:700,color:creditPct<25?'#ff3c5c':creditPct<50?'#ffb020':'#00d084'}}>{maxCredits===99999?'Ilimitado':`${Math.min(user.credits??0,maxCredits)}/${maxCredits}`}</div>
               </div>
               {maxCredits!==99999&&<>
                 <div style={{height:'5px',background:'#1e2840',borderRadius:'3px',overflow:'hidden',marginBottom:'5px'}}>
-                  <div style={{height:'100%',width:`${creditPct}%`,background:creditPct<25?'#ff3c5c':creditPct<50?'#ffb020':'#00d084',borderRadius:'3px',transition:'width .5s'}}/>
+                  <div style={{height:'100%',width:`${Math.min(100,creditPct)}%`,background:creditPct<25?'#ff3c5c':creditPct<50?'#ffb020':'#00d084',borderRadius:'3px',transition:'width .5s'}}/>
                 </div>
                 <div style={{fontSize:'10px',color:'#4a5568',fontFamily:'monospace'}}>{usedCredits}/{maxCredits} videos usados</div>
                 {creditPct<30&&<div onClick={()=>setView('billing')} style={{marginTop:'8px',padding:'6px 8px',background:'rgba(255,60,92,.08)',border:'1px solid rgba(255,60,92,.2)',borderRadius:'6px',fontSize:'10px',color:'#ff3c5c',cursor:'pointer'}}>Creditos baixos — upgrade</div>}
@@ -232,7 +232,7 @@ export default function Dashboard() {
 
             {view==='generator'&&<div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'14px',marginBottom:'20px'}}>
-                {[{label:'Videos Gerados',value:videos.length,accent:true},{label:'Creditos Restantes',value:maxCredits===99999?'Ilimitado':(user.credits??0),accent:false},{label:'Plano Atual',value:user.plan||'Starter',accent:false}].map((stat,i)=>(
+                {[{label:'Videos Gerados',value:videos.length,accent:true},{label:'Creditos Restantes',value:maxCredits===99999?'Ilimitado':Math.min(user.credits??0,maxCredits),accent:false},{label:'Plano Atual',value:user.plan||'Starter',accent:false}].map((stat,i)=>(
                   <div key={i} style={{background:stat.accent?'rgba(255,60,92,.04)':'#0e1219',border:`1px solid ${stat.accent?'rgba(255,60,92,.3)':'#1e2840'}`,borderRadius:'12px',padding:'18px'}}>
                     <div style={{fontSize:'10px',color:'#4a5568',letterSpacing:'1.5px',textTransform:'uppercase',fontFamily:'monospace'}}>{stat.label}</div>
                     <div style={{fontSize:'26px',fontWeight:800,marginTop:'6px',color:stat.accent?'#ff3c5c':'#f0f2f8'}}>{stat.value}</div>
