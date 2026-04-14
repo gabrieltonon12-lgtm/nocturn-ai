@@ -1,20 +1,43 @@
 import { Html, Head, Main, NextScript } from 'next/document'
 
+declare global {
+  interface Window {
+    fbq: any;
+    _fbq: any;
+    ttq: any;
+  }
+}
+
 export default function Document() {
   return (
     <Html lang="pt-BR">
       <Head>
-        <link rel="preconnect" href="https://fonts.googleapis.com"/>
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-        <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-        <meta name="theme-color" content="#080b10"/>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23ff3c5c'/><text x='16' y='22' text-anchor='middle' font-size='14' font-weight='bold' fill='white' font-family='Arial'>DC</text></svg>"/>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
 
-        {/* TikTok Pixel - NOCTURN.AI */}
+        {/* Facebook Pixel */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          !function(f,b,e,v,n,t,s)
+          {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+          n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+          if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+          n.queue=[];t=b.createElement(e);t.async=!0;
+          t.src=v;s=b.getElementsByTagName(e)[0];
+          s.parentNode.insertBefore(t,s)}(window, document,'script',
+          'https://connect.facebook.net/en_US/fbevents.js');
+          fbq('init', '1253914883109476');
+          fbq('track', 'PageView');
+        `}} />
+        <noscript>
+          <img height="1" width="1" style={{ display: 'none' }}
+            src="https://www.facebook.com/tr?id=1253914883109476&ev=PageView&noscript=1"
+          />
+        </noscript>
+
+        {/* TikTok Pixel */}
         <script dangerouslySetInnerHTML={{ __html: `
           !function (w, d, t) {
-            w.TiktokAnalyticsObject=t;
-            var ttq=w[t]=w[t]||[];
+            w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
             ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"];
             ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};
             for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);
