@@ -419,7 +419,7 @@ export default function Dashboard() {
             {(selectedVideo.tags&&selectedVideo.tags.length>0)&&<div>
               <div style={{fontSize:'10px',color:'#4a5568',fontFamily:'monospace',letterSpacing:'1px',marginBottom:'8px',textTransform:'uppercase'}}>Tags SEO</div>
               <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
-                {selectedVideo&&<VideoPlayerModal video={selectedVideo} onClose={()=>setSelectedVideo(null)}/>}
+                {selectedVideo && <VideoPlayerModal video={selectedVideo} onClose={()=>setSelectedVideo(null)}/>}
     </>
   )
 }
@@ -463,7 +463,7 @@ function VideoGrid({videos, onSelect}) {
   )
 }
 
-function VideoPlayerModal({video, onClose}) {
+function VideoPlayerModal({video, onClose}: {video: any, onClose: () => void}) {
   const canvasRef = React.useRef(null)
   const audioRef = React.useRef(null)
   const animRef = React.useRef(null)
