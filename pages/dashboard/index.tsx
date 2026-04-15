@@ -59,7 +59,7 @@ export default function Dashboard() {
   }, [logs])
 
   const togglePlat = (p: string) =>
-    setPlatforms(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])
+    setPlatforms(prev => (prev||[]).includes(p) ? (prev||[]).filter(x => x !== p) : [...(prev||[]), p])
 
   const logSteps = [
     'INIT  Inicializando agente NOCTURN.AI...',
@@ -80,7 +80,7 @@ export default function Dashboard() {
     let step = 0
     const iv = setInterval(() => {
       if (step >= logSteps.length) { clearInterval(iv); return }
-      setLogs(p => [...p, logSteps[step]])
+      if(logSteps[step]!==undefined){setLogs(p => [...p, logSteps[step]])}
       setProgress(Math.round((step + 1) / logSteps.length * 100))
       step++
     }, 900)
@@ -225,7 +225,7 @@ export default function Dashboard() {
               <div style={{fontSize:'18px',fontWeight:800}}>{view==='generator'?'Gerar Video':view==='videos'?'Meus Videos':view==='rewards'?'Rewards':'Assinatura'}</div>
               <div style={{fontSize:'11px',color:'#4a5568',marginTop:'2px',fontFamily:'monospace'}}>Ola, {user.name}</div>
             </div>
-            <div style={{width:'34px',height:'34px',borderRadius:'50%',background:'linear-gradient(135deg,#7c3aed,#ff3c5c)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'13px',fontWeight:700,color:'#fff'}}>{user.name?.[0]?.toUpperCase()}</div>
+            <div style={{width:'34px',height:'34px',borderRadius:'50%',background:'linear-gradient(135deg,#7c3aed,#ff3c5c)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'13px',fontWeight:700,color:'#fff'}}>{(user.name||'U')[0].toUpperCase()}</div>
           </div>
 
           <div style={{padding:'24px 28px'}}>
@@ -293,7 +293,7 @@ export default function Dashboard() {
                     <label style={{fontSize:'10px',color:'#4a5568',letterSpacing:'1.5px',textTransform:'uppercase',fontFamily:'monospace'}}>Plataformas</label>
                     <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginTop:'4px'}}>
                       {['youtube','tiktok','instagram','shorts'].map(p=>(
-                        <div key={p} onClick={()=>togglePlat(p)} style={{padding:'6px 10px',borderRadius:'16px',fontSize:'11px',fontWeight:600,cursor:'pointer',border:`1px solid ${platforms.includes(p)?'#ff3c5c':'#1e2840'}`,color:platforms.includes(p)?'#ff3c5c':'#8892a4',background:platforms.includes(p)?'rgba(255,60,92,.08)':'transparent'}}>
+                        <div key={p} onClick={()=>togglePlat(p)} style={{padding:'6px 10px',borderRadius:'16px',fontSize:'11px',fontWeight:600,cursor:'pointer',border:`1px solid ${(platforms||[]).includes(p)?'#ff3c5c':'#1e2840'}`,color:(platforms||[]).includes(p)?'#ff3c5c':'#8892a4',background:(platforms||[]).includes(p)?'rgba(255,60,92,.08)':'transparent'}}>
                           {p==='youtube'?'YouTube':p==='tiktok'?'TikTok':p==='instagram'?'Instagram':'Shorts'}
                         </div>
                       ))}
@@ -307,7 +307,7 @@ export default function Dashboard() {
                   {generating&&<><div style={{flex:1,height:'4px',background:'#1e2840',borderRadius:'2px',overflow:'hidden'}}><div style={{height:'100%',background:'linear-gradient(90deg,#ff3c5c,#ff6b35)',borderRadius:'2px',transition:'width .5s',width:progress+'%'}}/></div><span style={{fontSize:'11px',color:'#8892a4',fontFamily:'monospace',minWidth:'34px'}}>{progress}%</span></>}
                 </div>
                 {logs.length>0&&<div ref={logRef} style={{background:'#141920',border:'1px solid #1e2840',borderRadius:'8px',padding:'12px',fontFamily:'monospace',fontSize:'11px',color:'#f0f2f8',maxHeight:'120px',overflowY:'auto',marginTop:'14px',lineHeight:1.7}}>
-                  {logs.map((l,i)=><div key={i}><span style={{color:'#4a5568',marginRight:'8px'}}>[{String(i*3).padStart(2,'0')}s]</span><span style={{color:l.includes('DONE')?'#00d084':'#ff6b35',marginRight:'6px'}}>{l.split(' ')[0]}</span><span>{l.split(' ').slice(1).join(' ')}</span></div>)}
+                  {(logs||[]).map((l,i)=>{const line=l||'';return(<div key={i}><span style={{color:'#4a5568',marginRight:'8px'}}>[{String(i*3).padStart(2,'0')}s]</span><span style={{color:line.includes('DONE')?'#00d084':'#ff6b35',marginRight:'6px'}}>{line.split(' ')[0]||''}</span><span>{line.split(' ').slice(1).join(' ')}</span></div>);})}
                 </div>}
               </div>
               {videos.length>0&&<div style={{background:'#0e1219',border:'1px solid #1e2840',borderRadius:'14px',overflow:'hidden'}}>
@@ -333,7 +333,7 @@ export default function Dashboard() {
                 <div style={{fontSize:'12px',color:'#8892a4',lineHeight:1.7}}>Complete milestones gerando videos e acumulando views. Ganhe ate <strong style={{color:'#ff3c5c'}}>2 creditos bonus por mes</strong>.</div>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'14px',marginBottom:'32px'}}>
-                {rewards.map((r:any)=>(
+                {(rewards||[]).filter((r:any)=>r&&r.id).map((r:any)=>(
                   <div key={r.id} style={{background:r.unlocked?'rgba(0,208,132,.03)':'#0e1219',border:`1px solid ${r.unlocked?'rgba(0,208,132,.2)':r.eligible?'rgba(255,60,92,.3)':'#1e2840'}`,borderRadius:'12px',padding:'18px',opacity:r.unlocked?0.7:1}}>
                     <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'12px'}}>
                       <div style={{fontSize:'28px'}}>{r.badge}</div>
@@ -356,7 +356,7 @@ export default function Dashboard() {
                 <div style={{fontSize:'12px',color:'#8892a4',marginBottom:'16px',lineHeight:1.6}}>Publique seus videos no YouTube/TikTok e reporte as views para desbloquear milestones.</div>
                 {videos.length===0?<div style={{textAlign:'center',padding:'20px',color:'#4a5568',fontSize:'13px'}}>Gere videos primeiro.</div>:
                   <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
-                    {videos.slice(0,5).map((v:any)=>(
+                    {(videos||[]).slice(0,5).filter((v:any)=>v&&v.id).map((v:any)=>(
                       <div key={v.id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 14px',background:'#141920',border:'1px solid #1e2840',borderRadius:'8px'}}>
                         <div style={{flex:1,fontSize:'12px',color:'#f0f2f8',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{v.title}</div>
                         {reportingVideoId===v.id?<div style={{display:'flex',gap:'8px',alignItems:'center'}}>
@@ -416,7 +416,7 @@ export default function Dashboard() {
               <div style={{fontSize:'10px',color:'#4a5568',fontFamily:'monospace',letterSpacing:'1px',marginBottom:'10px',textTransform:'uppercase'}}>Roteiro Gerado</div>
               <p style={{fontSize:'13px',color:'#f0f2f8',lineHeight:1.8,whiteSpace:'pre-wrap'}}>{selectedVideo.script}</p>
             </div>
-            {selectedVideo.tags?.length>0&&<div>
+            {(selectedVideo.tags&&selectedVideo.tags.length>0)&&<div>
               <div style={{fontSize:'10px',color:'#4a5568',fontFamily:'monospace',letterSpacing:'1px',marginBottom:'8px',textTransform:'uppercase'}}>Tags SEO</div>
               <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
                 {selectedVideo.tags.map((tag:string,i:number)=><span key={i} style={{background:'rgba(255,60,92,.1)',border:'1px solid rgba(255,60,92,.2)',color:'#ff3c5c',padding:'3px 10px',borderRadius:'12px',fontSize:'11px'}}>#{tag}</span>)}
@@ -438,7 +438,7 @@ function VideoGrid({videos,onSelect}:{videos:any[],onSelect:(v:any)=>void}) {
         <div style={{height:'90px',background:'linear-gradient(135deg,#08080f,#150820)',display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
           <div style={{width:'34px',height:'34px',background:'rgba(255,60,92,.85)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'13px'}}>▶</div>
           <div style={{position:'absolute',top:'6px',left:'6px',display:'flex',gap:'3px'}}>
-            {(v.platforms||[]).slice(0,2).map((p:string)=><span key={p} style={{fontSize:'8px',padding:'2px 5px',borderRadius:'3px',background:p==='youtube'?'#ff0000':p==='tiktok'?'#111':'#bc1888',color:'#fff',fontWeight:700}}>{p==='youtube'?'YT':p==='tiktok'?'TT':'IG'}</span>)}
+            {(Array.isArray(v.platforms)?v.platforms:[]).slice(0,2).map((p:string)=><span key={p||''} style={{fontSize:'8px',padding:'2px 5px',borderRadius:'3px',background:p==='youtube'?'#ff0000':p==='tiktok'?'#111':'#bc1888',color:'#fff',fontWeight:700}}>{p==='youtube'?'YT':p==='tiktok'?'TT':'IG'}</span>)}
           </div>
         </div>
         <div style={{padding:'10px 12px'}}>
