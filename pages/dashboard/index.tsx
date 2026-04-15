@@ -429,23 +429,37 @@ export default function Dashboard() {
   )
 }
 
-function VideoGrid({videos,onSelect}:{videos:any[],onSelect:(v:any)=>void}) {
-  return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:'12px'}}>
-    {videos.map((v:any)=>(
-      <div key={v.id} onClick={()=>onSelect(v)} style={{background:'#0e1219',border:'1px solid #1e2840',borderRadius:'10px',overflow:'hidden',cursor:'pointer'}}
-        onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='#ff3c5c'}}
-        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='#1e2840'}}>
-        <div style={{height:'90px',background:'linear-gradient(135deg,#08080f,#150820)',display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
-          <div style={{width:'34px',height:'34px',background:'rgba(255,60,92,.85)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'13px'}}>▶</div>
-          <div style={{position:'absolute',top:'6px',left:'6px',display:'flex',gap:'3px'}}>
-            {(Array.isArray(v.platforms)?v.platforms:[]).slice(0,2).map((p:string)=><span key={p||''} style={{fontSize:'8px',padding:'2px 5px',borderRadius:'3px',background:p==='youtube'?'#ff0000':p==='tiktok'?'#111':'#bc1888',color:'#fff',fontWeight:700}}>{p==='youtube'?'YT':p==='tiktok'?'TT':'IG'}</span>)}
+function VideoGrid({videos, onSelect}) {
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:'14px'}}>
+      {(videos||[]).filter(v=>v&&v.id).map(v=>(
+        <div key={v.id} onClick={()=>onSelect(v)}
+          style={{background:'#0e1219',border:'1px solid #1e2840',borderRadius:'12px',overflow:'hidden',cursor:'pointer',transition:'all .2s'}}
+          onMouseEnter={e=>{const el=e.currentTarget;el.style.borderColor='#ff3c5c';el.style.transform='translateY(-2px)';el.style.boxShadow='0 8px 24px rgba(255,60,92,.15)'}}
+          onMouseLeave={e=>{const el=e.currentTarget;el.style.borderColor='#1e2840';el.style.transform='translateY(0)';el.style.boxShadow='none'}}>
+          <div style={{height:'110px',background:'linear-gradient(135deg,#0d0d1a,#1a0a1a)',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden'}}>
+            <div style={{position:'absolute',inset:0,background:'radial-gradient(circle at 50% 50%,rgba(255,60,92,.08),transparent 70%)'}}/>
+            <div style={{width:'44px',height:'44px',background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'18px',zIndex:1,boxShadow:'0 4px 16px rgba(255,60,92,.4)'}}>▶</div>
+            <div style={{position:'absolute',top:'8px',left:'8px',display:'flex',gap:'4px'}}>
+              {(Array.isArray(v.platforms)?v.platforms:[]).slice(0,3).map(p=>(
+                <span key={p||Math.random()} style={{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',background:p==='youtube'?'#ff0000':p==='tiktok'?'#010101':'#bc1888',color:'#fff',fontWeight:700}}>
+                  {p==='youtube'?'YT':p==='tiktok'?'TT':p==='instagram'?'IG':'SH'}
+                </span>
+              ))}
+            </div>
+            <div style={{position:'absolute',bottom:'8px',right:'8px',background:'rgba(0,208,132,.9)',borderRadius:'4px',padding:'2px 8px',fontSize:'9px',color:'#fff',fontWeight:700}}>
+              PRONTO
+            </div>
+          </div>
+          <div style={{padding:'12px 14px'}}>
+            <div style={{fontSize:'13px',fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:'#f0f2f8',marginBottom:'6px'}}>{v.title||'Sem titulo'}</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:'10px',color:'#4a5568',fontFamily:'monospace'}}>{v.duration==='short'?'30-60s':v.duration==='long'?'15-30min':'5-10min'}</span>
+              <span style={{fontSize:'10px',color:'#ff3c5c',fontWeight:600}}>Ver roteiro →</span>
+            </div>
           </div>
         </div>
-        <div style={{padding:'10px 12px'}}>
-          <div style={{fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginBottom:'4px',color:'#f0f2f8'}}>{v.title}</div>
-          <div style={{fontSize:'10px',color:'#00d084',fontFamily:'monospace'}}>Pronto — clique para ver roteiro</div>
-        </div>
-      </div>
-    ))}
-  </div>
+      ))}
+    </div>
+  )
 }
