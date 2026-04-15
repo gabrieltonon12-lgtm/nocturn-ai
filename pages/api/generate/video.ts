@@ -47,8 +47,14 @@ async function generateAudio(text: string, voiceId: string, elevenKey: string): 
       })
     })
     if (!r.ok) { console.error('ElevenLabs status:', r.status, await r.text()); return '' }
-    const buf = Buffer.from(await r.arrayBuffer())
-    return 'data:audio/mpeg;base64,' + buf.toString('base64')
+    const arrayBuf = await r.arrayBuffer()
+    const uint8 = new Uint8Array(arrayBuf)
+    let binary = ''
+    const chunkSize = 8192
+    for (let i = 0; i < uint8.length; i += chunkSize) {
+      binary += String.fromCharCode(...uint8.slice(i, i + chunkSize))
+    }
+    return 'data:audio/mpeg;base64,' + btoa(binary)
   } catch(e) { console.error('ElevenLabs error:', e); return '' }
 }
 
