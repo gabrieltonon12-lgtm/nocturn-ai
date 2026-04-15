@@ -464,262 +464,356 @@ function VideoGrid({videos, onSelect}) {
 }
 
 function VideoPlayerModal({video, onClose}) {
-  const [playing, setPlaying] = React.useState(false)
-  const [currentScene, setCurrentScene] = React.useState(0)
-  const [tab, setTab] = React.useState("player")
-  const [downloading, setDownloading] = React.useState(false)
-  const [dlProgress, setDlProgress] = React.useState(0)
+  const canvasRef = React.useRef(null)
   const audioRef = React.useRef(null)
-  const timerRef = React.useRef(null)
-  const scenes = video.scenes || []
+  const animRef = React.useRef(null)
+  const [tab, setTab] = React.useState("player")
+  const [isPlaying, setIsPlaying] = React.useState(false)
+  const [currentScene, setCurrentScene] = React.useState(0)
+  const [downloading, setDownloading] = React.useState(false)
+  const [dlPct, setDlPct] = React.useState(0)
+  const [dlLabel, setDlLabel] = React.useState("")
+  const [loadedImgs, setLoadedImgs] = React.useState([])
+  const [imgsReady, setImgsReady] = React.useState(false)
+
   const images = video.images || []
-  const totalScenes = Math.max(scenes.length, images.length, 1)
-  const hasMedia = images.length > 0 || !!video.audioBase64
+  const scenes = video.scenes || []
+  const N = Math.max(scenes.length, images.length, 1)
+  const secPerScene = video.duration === "short" ? 3 : video.duration === "long" ? 8 : 5
 
-  const play = () => {
-    if (!hasMedia) return
-    setPlaying(true); setCurrentScene(0)
-    if (audioRef.current && video.audioBase64) { audioRef.current.currentTime = 0; audioRef.current.play().catch(()=>{}) }
-    const dur = video.duration==="short"?8000:video.duration==="long"?25000:15000
-    const sceneTime = Math.max(2000, dur/totalScenes)
-    let sc = 0
-    timerRef.current = setInterval(()=>{
-      sc++
-      if(sc>=totalScenes){clearInterval(timerRef.current);setPlaying(false);setCurrentScene(0)}
-      else setCurrentScene(sc)
-    }, sceneTime)
-  }
+  // Preload images on mount
+  React.useEffect(() => {
+    if (images.length === 0) { setImgsReady(true); return }
+    let done = 0
+    const loaded = []
+    images.forEach((url, i) => {
+      const img = new Image()
+      img.crossOrigin = "anonymous"
+      img.onload = () => { loaded[i] = img; done++; if (done === images.length) { setLoadedImgs(loaded); setImgsReady(true) } }
+      img.onerror = () => { loaded[i] = null; done++; if (done === images.length) { setLoadedImgs(loaded); setImgsReady(true) } }
+      img.src = url
+    })
+  }, [])
 
-  const stop = () => {
-    setPlaying(false); setCurrentScene(0)
-    if(timerRef.current) clearInterval(timerRef.current)
-    if(audioRef.current){audioRef.current.pause();audioRef.current.currentTime=0}
-  }
-
-  React.useEffect(()=>()=>{if(timerRef.current)clearInterval(timerRef.current)},[])
-
-  const downloadVideo = async () => {
-    if(images.length===0){alert("Gere um novo video para ter imagens.");return}
-    setDownloading(true); setDlProgress(0)
-    try {
-      const canvas = document.createElement("canvas")
-      canvas.width = 1280; canvas.height = 720
-      const ctx = canvas.getContext("2d")
-      setDlProgress(5)
-      const imgs = await Promise.all(images.map(url=>new Promise(res=>{
-        const img = new Image(); img.crossOrigin="anonymous"
-        img.onload=()=>res(img); img.onerror=()=>res(null); img.src=url
-      })))
-      setDlProgress(15)
-      const stream = canvas.captureStream(30)
-      if(video.audioBase64){
-        try{
-          const ac=new AudioContext()
-          const resp=await fetch(video.audioBase64)
-          const buf=await resp.arrayBuffer()
-          const decoded=await ac.decodeAudioData(buf)
-          const dest=ac.createMediaStreamDestination()
-          const src=ac.createBufferSource()
-          src.buffer=decoded;src.connect(dest);src.start()
-          dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t))
-        }catch(e){console.log("audio",e)}
+  // Draw a single frame on the canvas
+  const drawFrame = (ctx, sceneIdx, pct) => {
+    const W = 1280, H = 720
+    ctx.clearRect(0, 0, W, H)
+    const img = loadedImgs[sceneIdx] || loadedImgs[0] || null
+    if (img) {
+      const scale = 1 + pct * 0.04
+      ctx.save()
+      ctx.filter = "brightness(0.5) saturate(0.7)"
+      ctx.drawImage(img, (W - W*scale)/2, (H - H*scale)/2, W*scale, H*scale)
+      ctx.restore()
+    } else {
+      const g = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 600)
+      g.addColorStop(0, "#200030"); g.addColorStop(1, "#000")
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    }
+    // Dark gradient bottom
+    const ov = ctx.createLinearGradient(0, H*0.45, 0, H)
+    ov.addColorStop(0, "rgba(0,0,0,0)"); ov.addColorStop(1, "rgba(0,0,0,0.9)")
+    ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H)
+    // Subtitle
+    const text = scenes[sceneIdx] ? scenes[sceneIdx].text || "" : (video.script || "").substring(sceneIdx*100, (sceneIdx+1)*100)
+    if (text) {
+      ctx.save()
+      ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(60, H - 130, W - 120, 110)
+      ctx.fillStyle = "#fff"; ctx.font = "bold 28px Arial"; ctx.textAlign = "center"
+      ctx.shadowColor = "rgba(0,0,0,0.95)"; ctx.shadowBlur = 8
+      const words = text.split(" "); let line = ""; let y = H - 90
+      for (const w of words) {
+        const t = line ? line+" "+w : w
+        if (ctx.measureText(t).width > W - 160 && line) { ctx.fillText(line, W/2, y); line = w; y += 36 }
+        else line = t
       }
-      const chunks=[]
-      const mime=MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")?"video/webm;codecs=vp9,opus":"video/webm"
-      const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:2500000})
-      rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)}
-      const sps=video.duration==="short"?2:video.duration==="long"?6:4
-      const totalMs=totalScenes*sps*1000
-      rec.start(100)
-      for(let s=0;s<totalScenes;s++){
-        const img=imgs[s]||imgs[0]
-        const text=scenes[s]?.text||(video.script||"").substring(s*80,(s+1)*80)||""
-        const sceneMs=sps*1000
-        const t0=Date.now()
-        setDlProgress(Math.round(15+(s/totalScenes)*75))
-        while(Date.now()-t0<sceneMs){
-          const pct=(Date.now()-t0)/sceneMs
-          ctx.clearRect(0,0,1280,720)
-          if(img){
-            const sc2=1+pct*0.04
-            ctx.save();ctx.filter="brightness(0.5) saturate(0.7)"
-            ctx.drawImage(img,(1280-1280*sc2)/2,(720-720*sc2)/2,1280*sc2,720*sc2)
-            ctx.restore()
-          } else {
-            const g=ctx.createRadialGradient(640,360,0,640,360,600)
-            g.addColorStop(0,"#1a0820");g.addColorStop(1,"#000")
-            ctx.fillStyle=g;ctx.fillRect(0,0,1280,720)
-          }
-          const ov=ctx.createLinearGradient(0,400,0,720)
-          ov.addColorStop(0,"rgba(0,0,0,0)");ov.addColorStop(1,"rgba(0,0,0,0.88)")
-          ctx.fillStyle=ov;ctx.fillRect(0,0,1280,720)
-          if(text){
-            ctx.save()
-            ctx.fillStyle="rgba(0,0,0,0.55)"
-            ctx.fillRect(80,590,1120,100)
-            ctx.fillStyle="#fff";ctx.font="bold 26px Arial";ctx.textAlign="center"
-            ctx.shadowColor="rgba(0,0,0,.9)";ctx.shadowBlur=6
-            const words=text.split(" ");let line="";let y=628
-            for(const w of words){const t2=line?line+" "+w:w;if(ctx.measureText(t2).width>980&&line){ctx.fillText(line,640,y);line=w;y+=34}else line=t2}
-            if(line)ctx.fillText(line,640,y)
-            ctx.restore()
-          }
-          ctx.fillStyle="rgba(0,0,0,0.6)";ctx.fillRect(18,18,158,34)
-          ctx.fillStyle="#ff3c5c";ctx.font="bold 13px Arial";ctx.textAlign="left";ctx.shadowBlur=0
-          ctx.fillText("NOCTURN.AI",30,40)
-          ctx.fillStyle="rgba(255,60,92,0.9)";ctx.fillRect(1200,18,60,28)
-          ctx.fillStyle="#fff";ctx.font="bold 11px Arial";ctx.textAlign="center"
-          ctx.fillText((s+1)+"/"+totalScenes,1230,36)
-          const done=(s*sps*1000+(Date.now()-t0))/totalMs
-          ctx.fillStyle="rgba(255,60,92,.9)";ctx.fillRect(0,714,1280*done,6)
-          await new Promise(r=>setTimeout(r,33))
+      if (line) ctx.fillText(line, W/2, y)
+      ctx.restore()
+    }
+    // Watermark
+    ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(18, 18, 160, 36)
+    ctx.fillStyle = "#ff3c5c"; ctx.font = "bold 14px Arial"; ctx.textAlign = "left"; ctx.shadowBlur = 0
+    ctx.fillText("NOCTURN.AI", 30, 42)
+    // Scene counter
+    ctx.fillStyle = "rgba(255,60,92,0.85)"; ctx.fillRect(W-70, 18, 52, 30)
+    ctx.fillStyle = "#fff"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center"
+    ctx.fillText((sceneIdx+1)+"/"+N, W-44, 37)
+    // Progress bar
+    const prog = (sceneIdx + pct) / N
+    ctx.fillStyle = "rgba(255,60,92,0.85)"; ctx.fillRect(0, H-5, W*prog, 5)
+  }
+
+  // Animation loop while playing
+  const startPlay = () => {
+    if (!canvasRef.current || !imgsReady) return
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext("2d")
+    setIsPlaying(true)
+    if (audioRef.current && video.audioBase64) {
+      audioRef.current.currentTime = 0
+      audioRef.current.play().catch(()=>{})
+    }
+    let sc = 0
+    let scStart = performance.now()
+    const loop = () => {
+      const now = performance.now()
+      const elapsed = (now - scStart) / 1000
+      const pct = Math.min(elapsed / secPerScene, 1)
+      drawFrame(ctx, sc, pct)
+      if (pct >= 1) {
+        sc++
+        scStart = now
+        setCurrentScene(sc)
+        if (sc >= N) {
+          drawFrame(ctx, N-1, 1)
+          setIsPlaying(false)
+          setCurrentScene(0)
+          if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0 }
+          return
         }
       }
-      setDlProgress(92)
-      rec.stop()
-      await new Promise(res=>{rec.onstop=res})
-      setDlProgress(97)
-      const blob=new Blob(chunks,{type:mime})
-      const url=URL.createObjectURL(blob)
-      const a=document.createElement("a")
-      a.href=url
-      a.download=(video.title||"video").replace(/[^a-zA-Z0-9]/g,"_").substring(0,50)+".webm"
-      document.body.appendChild(a);a.click();document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      setDlProgress(100)
-      setTimeout(()=>{setDownloading(false);setDlProgress(0)},2000)
-    }catch(e){
-      console.error("dl err",e)
-      alert("Erro: "+e.message)
-      setDownloading(false);setDlProgress(0)
+      animRef.current = requestAnimationFrame(loop)
+    }
+    animRef.current = requestAnimationFrame(loop)
+  }
+
+  const stopPlay = () => {
+    setIsPlaying(false)
+    setCurrentScene(0)
+    if (animRef.current) cancelAnimationFrame(animRef.current)
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0 }
+    // Draw first frame static
+    if (canvasRef.current && imgsReady) {
+      const ctx = canvasRef.current.getContext("2d")
+      drawFrame(ctx, 0, 0)
     }
   }
 
-  const curImg=images[currentScene]||images[0]||null
-  const curText=scenes[currentScene]?.text||(video.script||"").substring(0,120)||""
+  // Draw static first frame when images ready
+  React.useEffect(() => {
+    if (imgsReady && canvasRef.current) {
+      const ctx = canvasRef.current.getContext("2d")
+      drawFrame(ctx, 0, 0)
+    }
+  }, [imgsReady])
+
+  React.useEffect(() => () => { if (animRef.current) cancelAnimationFrame(animRef.current) }, [])
+
+  // DOWNLOAD: render offline frame by frame and capture as WebM
+  const downloadVideo = async () => {
+    if (images.length === 0) { alert("Gere um novo video para ter imagens."); return }
+    setDownloading(true); setDlPct(0); setDlLabel("Preparando...")
+    try {
+      const offCanvas = document.createElement("canvas")
+      offCanvas.width = 1280; offCanvas.height = 720
+      const ctx = offCanvas.getContext("2d")
+      const stream = offCanvas.captureStream(30)
+      // Add audio track
+      if (video.audioBase64) {
+        try {
+          const ac = new AudioContext()
+          const resp = await fetch(video.audioBase64)
+          const buf = await resp.arrayBuffer()
+          const decoded = await ac.decodeAudioData(buf)
+          const dest = ac.createMediaStreamDestination()
+          const src = ac.createBufferSource()
+          src.buffer = decoded; src.connect(dest); src.start()
+          dest.stream.getAudioTracks().forEach(t => stream.addTrack(t))
+        } catch(e) { console.log("audio", e) }
+      }
+      const chunks = []
+      const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus") ? "video/webm;codecs=vp9,opus" : "video/webm"
+      const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 3000000 })
+      rec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
+      rec.start(100)
+      const FPS = 30
+      const totalFrames = N * secPerScene * FPS
+      for (let f = 0; f < totalFrames; f++) {
+        const sc = Math.floor(f / (secPerScene * FPS))
+        const pct = (f % (secPerScene * FPS)) / (secPerScene * FPS)
+        drawFrame(ctx, Math.min(sc, N-1), pct)
+        const pctDone = Math.round((f / totalFrames) * 90)
+        if (f % 30 === 0) {
+          setDlPct(pctDone)
+          setDlLabel("Renderizando cena " + (Math.min(sc,N-1)+1) + " de " + N + "...")
+          await new Promise(r => setTimeout(r, 0))
+        }
+      }
+      setDlLabel("Finalizando...")
+      rec.stop()
+      await new Promise(res => { rec.onstop = res })
+      setDlPct(97)
+      const blob = new Blob(chunks, { type: mime })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = (video.title||"video").replace(/[^a-zA-Z0-9]/g,"_").substring(0,50) + ".webm"
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setDlPct(100); setDlLabel("Baixado!")
+      setTimeout(() => { setDownloading(false); setDlPct(0); setDlLabel("") }, 2500)
+    } catch(e) {
+      console.error(e)
+      alert("Erro ao gerar video: " + e.message)
+      setDownloading(false); setDlPct(0)
+    }
+  }
 
   return (
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"20px",backdropFilter:"blur(6px)"}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:"#080b10",border:"1px solid #1e2840",borderRadius:"18px",width:"100%",maxWidth:"780px",maxHeight:"92vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 32px 100px rgba(0,0,0,.9)"}}>
-        <div style={{padding:"14px 18px",borderBottom:"1px solid #1e2840",display:"flex",alignItems:"center",gap:"10px",flexShrink:0}}>
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.93)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"16px",backdropFilter:"blur(6px)"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#080b10",border:"1px solid #1e2840",borderRadius:"18px",width:"100%",maxWidth:"800px",maxHeight:"94vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 32px 100px rgba(0,0,0,.95)"}}>
+
+        {/* HEADER */}
+        <div style={{padding:"12px 16px",borderBottom:"1px solid #1e2840",display:"flex",alignItems:"center",gap:"10px",flexShrink:0}}>
           <div style={{flex:1,overflow:"hidden"}}>
             <div style={{fontSize:"14px",fontWeight:800,color:"#f0f2f8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{video.title||"Video"}</div>
-            <div style={{display:"flex",gap:"5px",marginTop:"4px",flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:"4px",marginTop:"3px",flexWrap:"wrap"}}>
               {(video.platforms||[]).map(p=><span key={p} style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:p==="youtube"?"rgba(255,0,0,.2)":"rgba(255,255,255,.08)",color:p==="youtube"?"#ff5555":"#aaa",fontWeight:700}}>{p}</span>)}
-              {video.hasAudio&&<span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:"rgba(0,208,132,.15)",color:"#00d084",fontWeight:700}}>ElevenLabs</span>}
-              {video.hasImages&&<span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:"rgba(124,58,237,.15)",color:"#a78bfa",fontWeight:700}}>Pexels</span>}
+              {video.hasAudio&&<span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:"rgba(0,208,132,.15)",color:"#00d084",fontWeight:700}}>Narracao ElevenLabs</span>}
+              {images.length>0&&<span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:"rgba(124,58,237,.15)",color:"#a78bfa",fontWeight:700}}>{images.length} imagens Pexels</span>}
             </div>
           </div>
-          <div style={{display:"flex",gap:"3px",background:"#0e1219",borderRadius:"7px",padding:"3px"}}>
+          <div style={{display:"flex",gap:"3px",background:"#0e1219",borderRadius:"7px",padding:"2px"}}>
             {["player","roteiro","tags"].map(t=>(
               <button key={t} onClick={()=>setTab(t)} style={{background:tab===t?"linear-gradient(135deg,#ff3c5c,#ff6b35)":"transparent",color:tab===t?"#fff":"#8892a4",border:"none",borderRadius:"5px",padding:"5px 10px",fontSize:"11px",fontWeight:700,cursor:"pointer"}}>
                 {t==="player"?"Player":t==="roteiro"?"Roteiro":"Tags"}
               </button>
             ))}
           </div>
-          <button onClick={onClose} style={{background:"rgba(255,255,255,.06)",border:"1px solid #1e2840",color:"#8892a4",fontSize:"15px",cursor:"pointer",width:"30px",height:"30px",borderRadius:"7px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>x</button>
+          <button onClick={()=>{stopPlay();onClose()}} style={{background:"rgba(255,255,255,.06)",border:"1px solid #1e2840",color:"#8892a4",fontSize:"14px",cursor:"pointer",width:"28px",height:"28px",borderRadius:"7px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>x</button>
         </div>
+
         <div style={{flex:1,overflow:"auto"}}>
+
+          {/* PLAYER TAB */}
           {tab==="player"&&<div>
-            <div style={{position:"relative",background:"#000",aspectRatio:"16/9",overflow:"hidden",maxHeight:"360px"}}>
-              {curImg
-                ?<img src={curImg} alt="" style={{width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.5) saturate(0.7)",transition:"opacity .6s"}}/>
-                :!hasMedia
-                  ?<div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#0d0820,#000)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"14px"}}>
-                    <div style={{fontSize:"32px"}}>🎬</div>
-                    <div style={{textAlign:"center"}}><div style={{fontSize:"13px",fontWeight:800,color:"#f0f2f8",marginBottom:"6px"}}>Video sem midia</div><div style={{fontSize:"11px",color:"#8892a4"}}>Gere um novo video.</div></div>
-                  </div>
-                  :<div style={{width:"100%",height:"100%",background:"radial-gradient(ellipse,#180820,#000)"}}/>
-              }
-              {curImg&&<div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,.85) 0%,transparent 55%)"}}/>}
-              {curImg&&curText&&(playing||currentScene>0)&&(
-                <div style={{position:"absolute",bottom:"16px",left:"16px",right:"16px",fontSize:"15px",fontWeight:700,color:"#fff",lineHeight:1.5,textShadow:"0 2px 10px rgba(0,0,0,.95)",textAlign:"center",background:"rgba(0,0,0,.5)",borderRadius:"8px",padding:"8px 14px"}}>
-                  {curText.substring(0,120)}{curText.length>120?"...":""}
+
+            {/* CANVAS VIDEO PLAYER */}
+            <div style={{position:"relative",background:"#000",lineHeight:0}}>
+              <canvas ref={canvasRef} width={1280} height={720}
+                style={{width:"100%",display:"block",aspectRatio:"16/9",maxHeight:"400px",objectFit:"cover"}}
+              />
+              {/* Play button overlay — shown when not playing */}
+              {!isPlaying&&imgsReady&&(
+                <div onClick={startPlay}
+                  style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",background:"rgba(0,0,0,0.15)"}}>
+                  <div style={{width:"70px",height:"70px",background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"28px",color:"#fff",boxShadow:"0 8px 40px rgba(255,60,92,.7)"}}>&#9654;</div>
                 </div>
               )}
-              {hasMedia&&<div style={{position:"absolute",top:"10px",left:"12px",display:"flex",alignItems:"center",gap:"5px",background:"rgba(0,0,0,.65)",borderRadius:"5px",padding:"3px 8px"}}>
-                <div style={{width:"14px",height:"14px",background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",borderRadius:"3px",fontSize:"6px",fontWeight:800,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}>DC</div>
-                <span style={{fontSize:"9px",color:"#fff",fontWeight:700,opacity:0.85}}>NOCTURN.AI</span>
-              </div>}
-              {playing&&<div style={{position:"absolute",top:"10px",right:"12px",background:"rgba(255,60,92,.9)",borderRadius:"4px",padding:"2px 7px",fontSize:"9px",fontWeight:700,color:"#fff"}}>{currentScene+1}/{totalScenes}</div>}
-              {hasMedia&&!playing&&<div onClick={play} style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
-                <div style={{width:"64px",height:"64px",background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",color:"#fff",boxShadow:"0 8px 40px rgba(255,60,92,.6)"}}>&#9654;</div>
-              </div>}
-              {playing&&<div style={{position:"absolute",bottom:0,left:0,right:0,height:"3px",background:"rgba(255,255,255,.15)",display:"flex",gap:"2px",padding:"0 2px"}}>
-                {Array.from({length:totalScenes}).map((_,i)=>(
-                  <div key={i} style={{flex:1,height:"100%",background:i<=currentScene?"#ff3c5c":"rgba(255,255,255,.2)",borderRadius:"2px"}}/>
-                ))}
-              </div>}
+              {/* Loading overlay */}
+              {!imgsReady&&(
+                <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000"}}>
+                  <div style={{textAlign:"center",color:"#8892a4",fontSize:"13px"}}>
+                    <div style={{fontSize:"28px",marginBottom:"8px"}}>&#9654;</div>
+                    Carregando imagens...
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* AUDIO (hidden) */}
             {video.audioBase64&&<audio ref={audioRef} src={video.audioBase64} style={{display:"none"}}/>}
-            <div style={{padding:"12px 18px",borderBottom:"1px solid #1e2840",display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
-              {hasMedia&&(!playing
-                ?<button onClick={play} style={{background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 18px",fontSize:"13px",fontWeight:700,cursor:"pointer"}}>
+
+            {/* CONTROLS */}
+            <div style={{padding:"12px 16px",borderBottom:"1px solid #1e2840",display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+              {imgsReady&&(!isPlaying
+                ?<button onClick={startPlay} style={{background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 20px",fontSize:"13px",fontWeight:700,cursor:"pointer"}}>
                   &#9654; Reproduzir{video.hasAudio?" com narracao":""}
                 </button>
-                :<button onClick={stop} style={{background:"#1e2840",color:"#f0f2f8",border:"none",borderRadius:"8px",padding:"9px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer"}}>&#9632; Parar</button>
+                :<button onClick={stopPlay} style={{background:"#1e2840",color:"#f0f2f8",border:"none",borderRadius:"8px",padding:"9px 18px",fontSize:"13px",fontWeight:700,cursor:"pointer"}}>&#9632; Parar</button>
               )}
               {images.length>0&&(
                 <button onClick={downloadVideo} disabled={downloading}
-                  style={{background:downloading?"#1e2840":"linear-gradient(135deg,#7c3aed,#a855f7)",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 18px",fontSize:"13px",fontWeight:700,cursor:downloading?"not-allowed":"pointer",opacity:downloading?0.7:1,display:"flex",alignItems:"center",gap:"6px"}}>
-                  {downloading?"Gerando video...":"⬇ Baixar Video (.webm)"}
+                  style={{background:downloading?"#1e2840":"linear-gradient(135deg,#6d28d9,#a855f7)",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 18px",fontSize:"13px",fontWeight:700,cursor:downloading?"not-allowed":"pointer",opacity:downloading?0.8:1}}>
+                  {downloading?"Gerando...":"&#11123; Baixar .webm"}
                 </button>
               )}
-              {video.hasAudio?<span style={{fontSize:"11px",color:"#00d084",fontWeight:600}}>Narracao ativa</span>:images.length>0&&<span style={{fontSize:"11px",color:"#4a5568"}}>Sem audio</span>}
+              {video.hasAudio
+                ?<span style={{fontSize:"11px",color:"#00d084",fontWeight:600}}>Narracao ElevenLabs ativa</span>
+                :images.length>0?<span style={{fontSize:"11px",color:"#4a5568"}}>Sem audio</span>:null
+              }
             </div>
-            {downloading&&dlProgress>0&&(
-              <div style={{padding:"8px 18px",borderBottom:"1px solid #1e2840"}}>
+
+            {/* DOWNLOAD PROGRESS */}
+            {downloading&&(
+              <div style={{padding:"8px 16px",borderBottom:"1px solid #1e2840"}}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:"10px",color:"#4a5568",marginBottom:"4px"}}>
-                  <span>{dlProgress<15?"Carregando imagens...":dlProgress<90?"Renderizando cenas...":dlProgress<100?"Finalizando...":"Pronto!"}</span>
-                  <span>{dlProgress}%</span>
+                  <span>{dlLabel}</span><span>{dlPct}%</span>
                 </div>
                 <div style={{height:"4px",background:"#1e2840",borderRadius:"2px",overflow:"hidden"}}>
-                  <div style={{height:"100%",width:dlProgress+"%",background:"linear-gradient(90deg,#7c3aed,#a855f7)",borderRadius:"2px",transition:"width .3s"}}/>
+                  <div style={{height:"100%",width:dlPct+"%",background:"linear-gradient(90deg,#6d28d9,#a855f7)",borderRadius:"2px",transition:"width .2s"}}/>
                 </div>
               </div>
             )}
-            {images.length>0&&<div style={{padding:"12px 18px"}}>
-              <div style={{fontSize:"10px",color:"#4a5568",letterSpacing:"1.5px",textTransform:"uppercase",marginBottom:"8px",fontFamily:"monospace"}}>{images.length} cenas — Pexels</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:"5px"}}>
-                {images.map((img,i)=>(
-                  <div key={i} onClick={()=>{stop();setCurrentScene(i)}} style={{borderRadius:"5px",overflow:"hidden",cursor:"pointer",border:currentScene===i?"2px solid #ff3c5c":"2px solid transparent",transition:"border .2s",position:"relative"}}>
-                    <img src={img} alt="" style={{width:"100%",height:"58px",objectFit:"cover",filter:"brightness(0.65)"}}/>
-                    <div style={{position:"absolute",bottom:"2px",left:"3px",fontSize:"8px",color:"#fff",fontWeight:700}}>C{i+1}</div>
-                  </div>
-                ))}
+
+            {/* SCENE THUMBNAILS */}
+            {images.length>0&&(
+              <div style={{padding:"10px 16px"}}>
+                <div style={{fontSize:"10px",color:"#4a5568",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:"7px",fontFamily:"monospace"}}>{N} cenas geradas</div>
+                <div style={{display:"flex",gap:"6px",overflowX:"auto",paddingBottom:"4px"}}>
+                  {images.map((img,i)=>(
+                    <div key={i}
+                      onClick={()=>{ if(animRef.current)cancelAnimationFrame(animRef.current); setIsPlaying(false); setCurrentScene(i); if(canvasRef.current&&imgsReady){const ctx=canvasRef.current.getContext("2d");drawFrame(ctx,i,0)} }}
+                      style={{flexShrink:0,borderRadius:"6px",overflow:"hidden",cursor:"pointer",border:currentScene===i&&!isPlaying?"2px solid #ff3c5c":"2px solid transparent",transition:"border .15s",position:"relative",width:"90px",height:"56px"}}>
+                      <img src={img} alt="" style={{width:"90px",height:"56px",objectFit:"cover",filter:"brightness(0.6)"}}/>
+                      <div style={{position:"absolute",bottom:"2px",left:"3px",fontSize:"8px",color:"#fff",fontWeight:700,textShadow:"0 1px 3px #000"}}>C{i+1}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>}
+            )}
+
+            {/* NO MEDIA STATE */}
+            {images.length===0&&(
+              <div style={{padding:"30px",textAlign:"center",color:"#4a5568"}}>
+                <div style={{fontSize:"32px",marginBottom:"10px"}}>🎬</div>
+                <div style={{fontSize:"13px",fontWeight:700,color:"#f0f2f8",marginBottom:"6px"}}>Este video nao tem imagens</div>
+                <div style={{fontSize:"11px",lineHeight:1.6}}>Foi gerado antes do novo pipeline.<br/>Gere um novo video para ter imagens + narracao + download.</div>
+              </div>
+            )}
           </div>}
-          {tab==="roteiro"&&<div style={{padding:"18px"}}>
-            <div style={{background:"#0a0d13",border:"1px solid #1a2235",borderRadius:"10px",padding:"16px",marginBottom:"12px",maxHeight:"300px",overflowY:"auto"}}>
+
+          {/* ROTEIRO TAB */}
+          {tab==="roteiro"&&<div style={{padding:"16px"}}>
+            <div style={{background:"#0a0d13",border:"1px solid #1a2235",borderRadius:"10px",padding:"14px",marginBottom:"12px",maxHeight:"280px",overflowY:"auto"}}>
               <pre style={{fontSize:"13px",color:"#d0d8e8",lineHeight:1.9,whiteSpace:"pre-wrap",margin:0,fontFamily:"inherit"}}>{video.script||"Roteiro nao disponivel."}</pre>
             </div>
-            {video.description&&<div style={{background:"rgba(124,58,237,.08)",border:"1px solid rgba(124,58,237,.2)",borderRadius:"8px",padding:"12px",marginBottom:"12px"}}>
-              <div style={{fontSize:"10px",color:"#a78bfa",fontWeight:700,marginBottom:"5px",textTransform:"uppercase",letterSpacing:"1px"}}>Descricao</div>
-              <p style={{fontSize:"12px",color:"#8892a4",lineHeight:1.7,margin:0}}>{video.description}</p>
-            </div>}
-            <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
+            {video.description&&(
+              <div style={{background:"rgba(124,58,237,.08)",border:"1px solid rgba(124,58,237,.2)",borderRadius:"8px",padding:"11px",marginBottom:"12px"}}>
+                <div style={{fontSize:"10px",color:"#a78bfa",fontWeight:700,marginBottom:"4px",textTransform:"uppercase",letterSpacing:"1px"}}>Descricao</div>
+                <p style={{fontSize:"12px",color:"#8892a4",lineHeight:1.7,margin:0}}>{video.description}</p>
+              </div>
+            )}
+            <div style={{display:"flex",gap:"8px"}}>
               <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(video.script||"").catch(()=>{})}
-                style={{background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 16px",fontSize:"12px",fontWeight:700,cursor:"pointer"}}>
+                style={{background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",color:"#fff",border:"none",borderRadius:"7px",padding:"8px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer"}}>
                 Copiar roteiro
               </button>
-              {video.description&&<button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(video.description||"").catch(()=>{})}
-                style={{background:"transparent",border:"1px solid #7c3aed",color:"#a78bfa",borderRadius:"8px",padding:"9px 16px",fontSize:"12px",fontWeight:700,cursor:"pointer"}}>
-                Copiar descricao
-              </button>}
+              {video.description&&(
+                <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(video.description||"").catch(()=>{})}
+                  style={{background:"transparent",border:"1px solid #7c3aed",color:"#a78bfa",borderRadius:"7px",padding:"8px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer"}}>
+                  Copiar descricao
+                </button>
+              )}
             </div>
           </div>}
-          {tab==="tags"&&<div style={{padding:"18px"}}>
-            <div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"14px"}}>
+
+          {/* TAGS TAB */}
+          {tab==="tags"&&<div style={{padding:"16px"}}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:"7px",marginBottom:"14px"}}>
               {(video.tags||[]).map((tag,i)=>(
                 <span key={i} style={{background:"rgba(0,208,132,.08)",border:"1px solid rgba(0,208,132,.2)",color:"#00d084",padding:"5px 12px",borderRadius:"14px",fontSize:"12px"}}>#{tag}</span>
               ))}
             </div>
-            {(video.tags||[]).length>0&&<button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText((video.tags||[]).map(t=>"#"+t).join(" ")).catch(()=>{})}
-              style={{background:"transparent",border:"1px solid #1e2840",color:"#8892a4",borderRadius:"8px",padding:"7px 14px",fontSize:"12px",cursor:"pointer"}}>
-              Copiar todas as tags
-            </button>}
+            {(video.tags||[]).length>0&&(
+              <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText((video.tags||[]).map(t=>"#"+t).join(" ")).catch(()=>{})}
+                style={{background:"transparent",border:"1px solid #1e2840",color:"#8892a4",borderRadius:"7px",padding:"7px 14px",fontSize:"12px",cursor:"pointer"}}>
+                Copiar todas as tags
+              </button>
+            )}
           </div>}
+
         </div>
       </div>
     </div>
