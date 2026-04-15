@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 
@@ -419,12 +419,7 @@ export default function Dashboard() {
             {(selectedVideo.tags&&selectedVideo.tags.length>0)&&<div>
               <div style={{fontSize:'10px',color:'#4a5568',fontFamily:'monospace',letterSpacing:'1px',marginBottom:'8px',textTransform:'uppercase'}}>Tags SEO</div>
               <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
-                {selectedVideo.tags.map((tag:string,i:number)=><span key={i} style={{background:'rgba(255,60,92,.1)',border:'1px solid rgba(255,60,92,.2)',color:'#ff3c5c',padding:'3px 10px',borderRadius:'12px',fontSize:'11px'}}>#{tag}</span>)}
-              </div>
-            </div>}
-          </div>
-        </div>
-      </div>}
+                {selectedVideo&&<VideoPlayerModal video={selectedVideo} onClose={()=>setSelectedVideo(null)}/>}
     </>
   )
 }
@@ -437,29 +432,184 @@ function VideoGrid({videos, onSelect}) {
           style={{background:'#0e1219',border:'1px solid #1e2840',borderRadius:'12px',overflow:'hidden',cursor:'pointer',transition:'all .2s'}}
           onMouseEnter={e=>{const el=e.currentTarget;el.style.borderColor='#ff3c5c';el.style.transform='translateY(-2px)';el.style.boxShadow='0 8px 24px rgba(255,60,92,.15)'}}
           onMouseLeave={e=>{const el=e.currentTarget;el.style.borderColor='#1e2840';el.style.transform='translateY(0)';el.style.boxShadow='none'}}>
-          <div style={{height:'110px',background:'linear-gradient(135deg,#0d0d1a,#1a0a1a)',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden'}}>
-            <div style={{position:'absolute',inset:0,background:'radial-gradient(circle at 50% 50%,rgba(255,60,92,.08),transparent 70%)'}}/>
-            <div style={{width:'44px',height:'44px',background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'18px',zIndex:1,boxShadow:'0 4px 16px rgba(255,60,92,.4)'}}>▶</div>
-            <div style={{position:'absolute',top:'8px',left:'8px',display:'flex',gap:'4px'}}>
-              {(Array.isArray(v.platforms)?v.platforms:[]).slice(0,3).map(p=>(
-                <span key={p||Math.random()} style={{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',background:p==='youtube'?'#ff0000':p==='tiktok'?'#010101':'#bc1888',color:'#fff',fontWeight:700}}>
-                  {p==='youtube'?'YT':p==='tiktok'?'TT':p==='instagram'?'IG':'SH'}
+          <div style={{height:'120px',background:'linear-gradient(135deg,#0d0d1a,#1a0820)',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden'}}>
+            {v.images&&v.images[0]
+              ?<img src={v.images[0]} alt="" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:0.5}}/>
+              :<div style={{position:'absolute',inset:0,background:'radial-gradient(circle,rgba(255,60,92,.12),transparent 70%)'}}/>
+            }
+            <div style={{position:'relative',zIndex:1,width:'44px',height:'44px',background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'18px',boxShadow:'0 4px 20px rgba(255,60,92,.5)'}}>&#9654;</div>
+            <div style={{position:'absolute',top:'8px',left:'8px',display:'flex',gap:'4px',zIndex:2}}>
+              {(Array.isArray(v.platforms)?v.platforms:[]).slice(0,2).map(p=>(
+                <span key={p} style={{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',background:p==='youtube'?'rgba(255,0,0,.9)':p==='tiktok'?'rgba(0,0,0,.9)':'rgba(188,24,136,.9)',color:'#fff',fontWeight:700}}>
+                  {p==='youtube'?'YT':p==='tiktok'?'TT':'IG'}
                 </span>
               ))}
             </div>
-            <div style={{position:'absolute',bottom:'8px',right:'8px',background:'rgba(0,208,132,.9)',borderRadius:'4px',padding:'2px 8px',fontSize:'9px',color:'#fff',fontWeight:700}}>
-              PRONTO
+            <div style={{position:'absolute',bottom:'8px',right:'8px',zIndex:2,display:'flex',gap:'4px'}}>
+              {v.hasAudio&&<span style={{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',background:'rgba(0,208,132,.9)',color:'#fff',fontWeight:700}}>VOZ</span>}
+              {v.hasImages&&<span style={{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',background:'rgba(124,58,237,.9)',color:'#fff',fontWeight:700}}>IMG</span>}
             </div>
           </div>
-          <div style={{padding:'12px 14px'}}>
-            <div style={{fontSize:'13px',fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:'#f0f2f8',marginBottom:'6px'}}>{v.title||'Sem titulo'}</div>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <span style={{fontSize:'10px',color:'#4a5568',fontFamily:'monospace'}}>{v.duration==='short'?'30-60s':v.duration==='long'?'15-30min':'5-10min'}</span>
-              <span style={{fontSize:'10px',color:'#ff3c5c',fontWeight:600}}>Ver roteiro →</span>
+          <div style={{padding:'10px 12px'}}>
+            <div style={{fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:'#f0f2f8',marginBottom:'5px'}}>{v.title||'Sem titulo'}</div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:'10px',color:'#4a5568'}}>
+              <span>{v.duration==='short'?'30-60s':v.duration==='long'?'15-30min':'5-10min'}</span>
+              <span style={{color:'#ff3c5c',fontWeight:600}}>Assistir</span>
             </div>
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+function VideoPlayerModal({video, onClose}) {
+  const [playing, setPlaying] = React.useState(false)
+  const [currentScene, setCurrentScene] = React.useState(0)
+  const [tab, setTab] = React.useState('player')
+  const audioRef = React.useRef(null)
+  const timerRef = React.useRef(null)
+
+  const scenes = video.scenes || []
+  const images = video.images || []
+  const totalScenes = Math.max(scenes.length, images.length, 1)
+
+  const play = () => {
+    setPlaying(true)
+    setCurrentScene(0)
+    if (audioRef.current && video.audioBase64) {
+      audioRef.current.currentTime = 0
+      audioRef.current.play().catch(()=>{})
+    }
+    const dur = video.duration === 'short' ? 8000 : video.duration === 'long' ? 25000 : 15000
+    const sceneTime = Math.max(2000, dur / totalScenes)
+    let sc = 0
+    timerRef.current = setInterval(() => {
+      sc++
+      if (sc >= totalScenes) { clearInterval(timerRef.current); setPlaying(false); setCurrentScene(0) }
+      else setCurrentScene(sc)
+    }, sceneTime)
+  }
+
+  const stop = () => {
+    setPlaying(false); setCurrentScene(0)
+    if (timerRef.current) clearInterval(timerRef.current)
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0 }
+  }
+
+  React.useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current) }, [])
+
+  const curImg = images[currentScene] || images[0] || null
+  const curText = scenes[currentScene]?.text || (video.script||'').substring(0,120) || ''
+
+  return (
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:'20px',backdropFilter:'blur(6px)'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'#080b10',border:'1px solid #1e2840',borderRadius:'18px',width:'100%',maxWidth:'780px',maxHeight:'92vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 32px 100px rgba(0,0,0,.9)'}}>
+
+        <div style={{padding:'14px 18px',borderBottom:'1px solid #1e2840',display:'flex',alignItems:'center',gap:'10px',flexShrink:0}}>
+          <div style={{flex:1,overflow:'hidden'}}>
+            <div style={{fontSize:'14px',fontWeight:800,color:'#f0f2f8',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{video.title||'Video'}</div>
+            <div style={{display:'flex',gap:'5px',marginTop:'4px',flexWrap:'wrap'}}>
+              {(video.platforms||[]).map(p=><span key={p} style={{fontSize:'9px',padding:'1px 6px',borderRadius:'3px',background:p==='youtube'?'rgba(255,0,0,.2)':'rgba(255,255,255,.08)',color:p==='youtube'?'#ff5555':'#aaa',fontWeight:700}}>{p}</span>)}
+              {video.hasAudio&&<span style={{fontSize:'9px',padding:'1px 6px',borderRadius:'3px',background:'rgba(0,208,132,.15)',color:'#00d084',fontWeight:700}}>Narracao ElevenLabs</span>}
+              {video.hasImages&&<span style={{fontSize:'9px',padding:'1px 6px',borderRadius:'3px',background:'rgba(124,58,237,.15)',color:'#a78bfa',fontWeight:700}}>Imagens Pexels</span>}
+            </div>
+          </div>
+          <div style={{display:'flex',gap:'3px',background:'#0e1219',borderRadius:'7px',padding:'3px'}}>
+            {['player','roteiro','tags'].map(t=>(
+              <button key={t} onClick={()=>setTab(t)} style={{background:tab===t?'linear-gradient(135deg,#ff3c5c,#ff6b35)':'transparent',color:tab===t?'#fff':'#8892a4',border:'none',borderRadius:'5px',padding:'5px 10px',fontSize:'11px',fontWeight:700,cursor:'pointer'}}>
+                {t==='player'?'Player':t==='roteiro'?'Roteiro':'Tags'}
+              </button>
+            ))}
+          </div>
+          <button onClick={onClose} style={{background:'rgba(255,255,255,.06)',border:'1px solid #1e2840',color:'#8892a4',fontSize:'15px',cursor:'pointer',width:'30px',height:'30px',borderRadius:'7px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>x</button>
+        </div>
+
+        <div style={{flex:1,overflow:'auto'}}>
+
+          {tab==='player'&&<div>
+            <div style={{position:'relative',background:'#000',aspectRatio:'16/9',overflow:'hidden',maxHeight:'360px'}}>
+              {curImg
+                ?<img src={curImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',filter:'brightness(0.5) saturate(0.7)',transition:'opacity .6s'}}/>
+                :<div style={{width:'100%',height:'100%',background:'radial-gradient(ellipse at center,#180820,#000)',display:'flex',alignItems:'center',justifyContent:'center'}}><span style={{fontSize:'40px',opacity:0.2}}>&#127916;</span></div>
+              }
+              <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.85) 0%,transparent 55%)'}}/>
+              {curText&&(playing||currentScene>0)&&(
+                <div style={{position:'absolute',bottom:'22px',left:'16px',right:'16px',fontSize:'15px',fontWeight:700,color:'#fff',lineHeight:1.5,textShadow:'0 2px 10px rgba(0,0,0,.95)',textAlign:'center'}}>
+                  {curText.substring(0,110)}{curText.length>110?'...':''}
+                </div>
+              )}
+              <div style={{position:'absolute',top:'10px',left:'12px',display:'flex',alignItems:'center',gap:'5px',background:'rgba(0,0,0,.65)',borderRadius:'5px',padding:'3px 8px'}}>
+                <div style={{width:'14px',height:'14px',background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',borderRadius:'3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'6px',fontWeight:800,color:'#fff'}}>DC</div>
+                <span style={{fontSize:'9px',color:'#fff',fontWeight:700,opacity:0.85}}>NOCTURN.AI</span>
+              </div>
+              {playing&&<div style={{position:'absolute',top:'10px',right:'12px',background:'rgba(255,60,92,.9)',borderRadius:'4px',padding:'2px 7px',fontSize:'9px',fontWeight:700,color:'#fff'}}>{currentScene+1}/{totalScenes}</div>}
+              {!playing&&<div onClick={play} style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+                <div style={{width:'64px',height:'64px',background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px',color:'#fff',boxShadow:'0 8px 40px rgba(255,60,92,.6)'}}>&#9654;</div>
+              </div>}
+              {playing&&<div style={{position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'rgba(255,255,255,.15)',display:'flex',gap:'2px',padding:'0 2px'}}>
+                {Array.from({length:totalScenes}).map((_,i)=>(
+                  <div key={i} style={{flex:1,height:'100%',background:i<=currentScene?'#ff3c5c':'rgba(255,255,255,.2)',borderRadius:'2px'}}/>
+                ))}
+              </div>}
+            </div>
+
+            {video.audioBase64&&<audio ref={audioRef} src={video.audioBase64} style={{display:'none'}}/>}
+
+            <div style={{padding:'12px 18px',borderBottom:'1px solid #1e2840',display:'flex',gap:'10px',alignItems:'center',flexWrap:'wrap'}}>
+              {!playing
+                ?<button onClick={play} style={{background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',color:'#fff',border:'none',borderRadius:'8px',padding:'9px 20px',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
+                  &#9654; Reproduzir{video.hasAudio?' com narracao':''}
+                </button>
+                :<button onClick={stop} style={{background:'#1e2840',color:'#f0f2f8',border:'none',borderRadius:'8px',padding:'9px 18px',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>&#9632; Parar</button>
+              }
+              {video.hasAudio
+                ?<span style={{fontSize:'12px',color:'#00d084',fontWeight:600}}>Narracao ativa via ElevenLabs</span>
+                :<span style={{fontSize:'11px',color:'#4a5568'}}>Sem audio — configure ELEVENLABS_API_KEY na Vercel</span>
+              }
+            </div>
+
+            {images.length>0&&<div style={{padding:'12px 18px'}}>
+              <div style={{fontSize:'10px',color:'#4a5568',letterSpacing:'1.5px',textTransform:'uppercase',marginBottom:'8px',fontFamily:'monospace'}}>{images.length} cenas — Pexels</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:'5px'}}>
+                {images.map((img,i)=>(
+                  <div key={i} onClick={()=>{stop();setCurrentScene(i)}} style={{borderRadius:'5px',overflow:'hidden',cursor:'pointer',border:currentScene===i?'2px solid #ff3c5c':'2px solid transparent',transition:'border .2s',position:'relative'}}>
+                    <img src={img} alt="" style={{width:'100%',height:'58px',objectFit:'cover',filter:'brightness(0.65)'}}/>
+                    <div style={{position:'absolute',bottom:'2px',left:'3px',fontSize:'8px',color:'#fff',fontWeight:700,textShadow:'0 1px 3px rgba(0,0,0,.9)'}}>C{i+1}</div>
+                  </div>
+                ))}
+              </div>
+            </div>}
+          </div>}
+
+          {tab==='roteiro'&&<div style={{padding:'18px'}}>
+            <div style={{background:'#0a0d13',border:'1px solid #1a2235',borderRadius:'10px',padding:'16px',marginBottom:'12px',maxHeight:'300px',overflowY:'auto'}}>
+              <pre style={{fontSize:'13px',color:'#d0d8e8',lineHeight:1.9,whiteSpace:'pre-wrap',margin:0,fontFamily:'inherit'}}>{video.script||'Roteiro nao disponivel.'}</pre>
+            </div>
+            {video.description&&<div style={{background:'rgba(124,58,237,.08)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'8px',padding:'12px',marginBottom:'12px'}}>
+              <div style={{fontSize:'10px',color:'#a78bfa',fontWeight:700,marginBottom:'5px',textTransform:'uppercase',letterSpacing:'1px'}}>Descricao para publicacao</div>
+              <p style={{fontSize:'12px',color:'#8892a4',lineHeight:1.7,margin:0}}>{video.description}</p>
+            </div>}
+            <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(video.script||'').catch(()=>{})}
+              style={{background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',color:'#fff',border:'none',borderRadius:'8px',padding:'9px 16px',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+              Copiar roteiro
+            </button>
+          </div>}
+
+          {tab==='tags'&&<div style={{padding:'18px'}}>
+            <div style={{display:'flex',flexWrap:'wrap',gap:'8px',marginBottom:'14px'}}>
+              {(video.tags||[]).map((tag,i)=>(
+                <span key={i} style={{background:'rgba(0,208,132,.08)',border:'1px solid rgba(0,208,132,.2)',color:'#00d084',padding:'5px 12px',borderRadius:'14px',fontSize:'12px'}}>#{tag}</span>
+              ))}
+            </div>
+            {(video.tags||[]).length>0&&<button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText((video.tags||[]).map(t=>'#'+t).join(' ')).catch(()=>{})}
+              style={{background:'transparent',border:'1px solid #1e2840',color:'#8892a4',borderRadius:'8px',padding:'7px 14px',fontSize:'12px',cursor:'pointer'}}>
+              Copiar todas as tags
+            </button>}
+          </div>}
+
+        </div>
+      </div>
     </div>
   )
 }
