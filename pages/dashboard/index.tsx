@@ -6,42 +6,838 @@ const PLAN_URLS: Record<string,string> = {
   starter: 'https://pay.cakto.com.br/8euvzxd',
   pro: 'https://pay.cakto.com.br/37beu86',
   enterprise: 'https://pay.cakto.com.br/izhvx9t',
-      {selectedVideo && <VideoPlayerModal video={selectedVideo} onClose={()=>setSelectedVideo(null)}/>}
+}
+
+const QUICK_PROMPTS = [
+  { icon:'👁️', label:'Illuminati', text:'Um documentário revelador sobre o Illuminati e como eles controlam o sistema financeiro mundial desde 1776' },
+  { icon:'💀', label:'True Crime', text:'O caso real mais perturbador do true crime brasileiro que a mídia tentou esconder' },
+  { icon:'👽', label:'Área 51', text:'Evidências reais de que a Área 51 esconde tecnologia extraterrestre — documentos desclassificados revelam tudo' },
+  { icon:'💰', label:'Finanças', text:'A verdade sombria sobre como os bancos centrais controlam cada governo do mundo sem que ninguém saiba' },
+  { icon:'🌍', label:'Conspirações', text:'As 5 maiores conspirações que se tornaram realidade comprovada e que o mainstream ignorou por anos' },
+  { icon:'🧠', label:'MKUltra', text:'O projeto MKUltra e os experimentos secretos de controle mental da CIA que duram até hoje' },
+  { icon:'🔴', label:'Soc. Secretas', text:'As sociedades secretas mais poderosas do mundo e seus rituais que influenciam presidentes e reis' },
+  { icon:'📡', label:'HAARP', text:'O projeto HAARP e a verdade sobre o controle do clima como arma geopolítica' },
+]
+
+const PLAN_CREDITS: Record<string,number> = { starter:20, pro:100, enterprise:99999 }
+
+// ── Design tokens (in sync with globals.css CSS vars) ──────────────────────
+const C = {
+  void:    '#02040A',
+  base:    '#05080F',
+  layer:   '#080D1A',
+  card:    '#0C1222',
+  raised:  '#101828',
+  focus:   '#152035',
+  line:    '#192436',
+  lineHi:  '#203050',
+  red:     '#C5183A',
+  redDim:  'rgba(197,24,58,.09)',
+  redGlow: 'rgba(197,24,58,.18)',
+  violet:  '#7C3AED',
+  vDim:    'rgba(124,58,237,.1)',
+  green:   '#059669',
+  gDim:    'rgba(5,150,105,.1)',
+  amber:   '#D97706',
+  aDim:    'rgba(217,119,6,.1)',
+  t1:      '#ECF2FA',
+  t2:      '#6E8099',
+  t3:      '#364A62',
+}
+const F = {
+  body: "'Inter',system-ui,sans-serif",
+  head: "'Space Grotesk',system-ui,sans-serif",
+  mono: "'JetBrains Mono',monospace",
+}
+const shadow = {
+  card:  '0 1px 3px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.02)',
+  float: '0 8px 24px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)',
+  modal: '0 32px 80px rgba(0,0,0,.85),0 4px 16px rgba(0,0,0,.5)',
+  red:   '0 4px 20px rgba(197,24,58,.25)',
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+const selStyle: React.CSSProperties = {
+  background: C.card,
+  border: `1px solid ${C.line}`,
+  borderRadius: '8px',
+  padding: '9px 12px',
+  color: C.t1,
+  fontSize: '13px',
+  outline: 'none',
+  fontFamily: F.body,
+  width: '100%',
+  cursor: 'pointer',
+  transition: 'border-color .15s',
+  appearance: 'none',
+  WebkitAppearance: 'none',
+}
+
+export default function Dashboard() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [videos, setVideos] = useState<any[]>([])
+  const [view, setView] = useState('generator')
+  const [prompt, setPrompt] = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [logs, setLogs] = useState<string[]>([])
+  const [platforms, setPlatforms] = useState(['youtube','tiktok'])
+  const [contentType, setContentType] = useState('faceless')
+  const [duration, setDuration] = useState('medium')
+  const [voice, setVoice] = useState('masculine')
+  const [selectedVideo, setSelectedVideo] = useState<any>(null)
+  const [rewards, setRewards] = useState<any[]>([])
+  const [rewardToast, setRewardToast] = useState('')
+  const [claimingId, setClaimingId] = useState('')
+  const [viewsInput, setViewsInput] = useState('')
+  const [reportingVideoId, setReportingVideoId] = useState('')
+  const logRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const u = localStorage.getItem('user')
+    const t = localStorage.getItem('token')
+    if (!u || !t) { router.push('/login'); return }
+    setUser(JSON.parse(u))
+    const token = t
+    fetch('/api/videos', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json()).then(d => setVideos(d.videos || []))
+    fetch('/api/rewards', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json()).then(d => setRewards(d.rewards || []))
+  }, [])
+
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
+  }, [logs])
+
+  const togglePlat = (p: string) =>
+    setPlatforms(prev => (prev||[]).includes(p) ? (prev||[]).filter(x => x !== p) : [...(prev||[]), p])
+
+  const logSteps = [
+    'INIT   Inicializando agente NOCTURN.AI...',
+    'SCRIPT Gerando roteiro com GPT-4o...',
+    'VOICE  Sintetizando narracao OpenAI TTS...',
+    'VISUAL Buscando imagens no Pexels...',
+    'EDIT   Aplicando efeitos cinematograficos...',
+    'SUBS   Gerando legendas automaticas...',
+    'ENCODE Codificando video final...',
+    'THUMB  Otimizando thumbnail...',
+    'DONE   Video gerado com sucesso!',
+  ]
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return
+    setGenerating(true); setProgress(0); setLogs([])
+    const token = localStorage.getItem('token') || ''
+    let step = 0
+    const iv = setInterval(() => {
+      if (step >= logSteps.length) { clearInterval(iv); return }
+      if (logSteps[step] !== undefined) { setLogs(p => [...p, logSteps[step]]) }
+      setProgress(Math.round((step + 1) / logSteps.length * 100))
+      step++
+    }, 900)
+    try {
+      const res = await fetch('/api/generate/video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ prompt, contentType, duration, voice, platforms })
+      })
+      const data = await res.json()
+      setTimeout(async () => {
+        clearInterval(iv); setGenerating(false); setProgress(100)
+        if (res.ok && data.video) {
+          setVideos(v => [data.video, ...v])
+          const u = JSON.parse(localStorage.getItem('user') || '{}')
+          u.credits = data.creditsRemaining
+          localStorage.setItem('user', JSON.stringify(u))
+          setUser((prev: any) => ({ ...prev, credits: data.creditsRemaining }))
+          const rr = await fetch('/api/rewards', { headers: { Authorization: 'Bearer ' + token } })
+          const rd = await rr.json()
+          setRewards(rd.rewards || [])
+          const eligible = (rd.rewards || []).filter((r: any) => r.eligible)
+          if (eligible.length > 0) {
+            setRewardToast('Novo reward: ' + eligible[0].badge + ' ' + eligible[0].label)
+            setTimeout(() => setRewardToast(''), 5000)
+          }
+        } else { alert(data.error || 'Erro ao gerar video') }
+      }, logSteps.length * 900 + 600)
+    } catch { clearInterval(iv); setGenerating(false); alert('Erro de conexao.') }
+  }
+
+  const handleClaimReward = async (rewardId: string) => {
+    setClaimingId(rewardId)
+    const token = localStorage.getItem('token') || ''
+    try {
+      const res = await fetch('/api/rewards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'claim', rewardId })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setRewardToast(data.message || 'Reward resgatado!')
+        setTimeout(() => setRewardToast(''), 4000)
+        if (data.creditsEarned > 0) {
+          const u = JSON.parse(localStorage.getItem('user') || '{}')
+          u.credits = data.newCredits
+          localStorage.setItem('user', JSON.stringify(u))
+          setUser((prev: any) => ({ ...prev, credits: data.newCredits }))
+        }
+        const rr = await fetch('/api/rewards', { headers: { Authorization: 'Bearer ' + token } })
+        setRewards((await rr.json()).rewards || [])
+      } else { alert(data.error) }
+    } catch { alert('Erro ao resgatar') }
+    setClaimingId('')
+  }
+
+  const handleReportViews = async (videoId: string) => {
+    const views = parseInt(viewsInput)
+    if (!views || views <= 0) return
+    const token = localStorage.getItem('token') || ''
+    const res = await fetch('/api/rewards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ action: 'report_views', views, videoId })
+    })
+    if (res.ok) {
+      setViewsInput(''); setReportingVideoId('')
+      const rr = await fetch('/api/rewards', { headers: { Authorization: 'Bearer ' + token } })
+      setRewards((await rr.json()).rewards || [])
+      setRewardToast('Views registradas!')
+      setTimeout(() => setRewardToast(''), 3000)
+    }
+  }
+
+  const logout = () => { localStorage.clear(); router.push('/') }
+
+  if (!user) return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:C.base,color:C.t3,fontFamily:F.body,fontSize:'13px',gap:'10px'}}>
+      <div style={{width:'16px',height:'16px',borderRadius:'50%',border:`2px solid ${C.lineHi}`,borderTopColor:C.red,animation:'spin 0.8s linear infinite'}}/>
+      Carregando...
+    </div>
+  )
+
+  const maxCredits = PLAN_CREDITS[user.plan?.toLowerCase()] || 20
+  const usedCredits = maxCredits === 99999 ? 0 : Math.max(0, maxCredits - (user.credits ?? maxCredits))
+  const creditPct = maxCredits === 99999 ? 100 : Math.round(((user.credits ?? 0) / maxCredits) * 100)
+  const eligibleRewards = rewards.filter(r => r.eligible)
+
+  const NAV_ITEMS = [
+    { id:'generator', icon:'◈', label:'Gerar Vídeo', badge:'IA', badgeColor: C.green, badgeBg: C.gDim },
+    { id:'videos', icon:'▤', label:'Biblioteca', badge: videos.length > 0 ? String(videos.length) : undefined },
+    { id:'rewards', icon:'◆', label:'Rewards', badge: eligibleRewards.length > 0 ? String(eligibleRewards.length) : undefined, badgeColor: C.red, badgeBg: C.redDim, badgeRed: true },
+    { id:'billing', icon:'◎', label:'Assinatura' },
+  ]
+
+  const planColor = user.plan === 'enterprise' ? C.violet : user.plan === 'pro' ? C.red : C.green
+  const planLabel = (user.plan || 'free').charAt(0).toUpperCase() + (user.plan || 'free').slice(1)
+
+  return (
+    <>
+      <Head><title>Dashboard — NOCTURN.AI</title></Head>
+
+      <style>{`
+        .nav-item { transition: background .15s, color .15s, border-color .15s !important; }
+        .nav-item:hover { background: rgba(255,255,255,.03) !important; color: ${C.t2} !important; }
+        .card-hover { transition: border-color .18s, box-shadow .18s, transform .18s !important; }
+        .card-hover:hover { border-color: ${C.lineHi} !important; box-shadow: ${shadow.float} !important; transform: translateY(-2px) !important; }
+        .btn-primary { transition: background .15s, box-shadow .15s, opacity .15s !important; }
+        .btn-primary:hover:not(:disabled) { box-shadow: ${shadow.red} !important; }
+        .btn-ghost { transition: border-color .15s, color .15s, background .15s !important; }
+        .btn-ghost:hover { border-color: ${C.lineHi} !important; color: ${C.t2} !important; background: rgba(255,255,255,.03) !important; }
+        .chip { transition: border-color .15s, background .15s, color .15s !important; }
+        .chip:hover { border-color: rgba(197,24,58,.3) !important; }
+        .quick-prompt { transition: border-color .15s, background .15s !important; }
+        .quick-prompt:hover { border-color: ${C.lineHi} !important; background: ${C.raised} !important; }
+        .sel-row select:focus { border-color: ${C.red} !important; }
+        .textarea-prompt:focus { border-color: ${C.red} !important; box-shadow: 0 0 0 3px rgba(197,24,58,.08) !important; }
+        .sidebar-footer-btn { transition: background .12s !important; }
+        .sidebar-footer-btn:hover { background: rgba(255,255,255,.06) !important; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: ${C.lineHi}; border-radius: 4px; }
+      `}</style>
+
+      {/* Toast */}
+      {rewardToast && (
+        <div style={{position:'fixed',top:'24px',right:'24px',zIndex:9999,background:C.card,border:`1px solid ${C.red}`,color:C.t1,padding:'12px 18px',borderRadius:'10px',fontWeight:600,fontSize:'13px',boxShadow:shadow.float,fontFamily:F.body,maxWidth:'300px',animation:'fadeUp .2s ease'}}>
+          {rewardToast}
+        </div>
+      )}
+
+      <div style={{display:'flex',height:'100vh',overflow:'hidden',background:C.base,color:C.t1,fontFamily:F.body}}>
+
+        {/* ── SIDEBAR ─────────────────────────────────────────── */}
+        <div style={{width:'240px',background:C.layer,borderRight:`1px solid ${C.line}`,display:'flex',flexDirection:'column',flexShrink:0}}>
+
+          {/* Logo */}
+          <div style={{padding:'20px 18px 18px',borderBottom:`1px solid ${C.line}`,display:'flex',alignItems:'center',gap:'12px'}}>
+            <div style={{
+              width:'32px',height:'32px',
+              background:`linear-gradient(135deg,${C.red},#8B0A22)`,
+              borderRadius:'8px',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontFamily:F.head,fontWeight:800,color:'#fff',fontSize:'15px',
+              flexShrink:0,letterSpacing:'-0.5px',
+              boxShadow:'0 2px 8px rgba(197,24,58,.35)',
+            }}>N</div>
+            <div>
+              <div style={{fontFamily:F.head,fontSize:'14px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1,lineHeight:1.2}}>NOCTURN.AI</div>
+              <div style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.12em',textTransform:'uppercase',marginTop:'2px'}}>Video SaaS</div>
+            </div>
+          </div>
+
+          {/* Nav */}
+          <nav style={{padding:'12px 10px',flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'2px'}}>
+            <div style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.12em',padding:'2px 8px 8px',textTransform:'uppercase'}}>Menu</div>
+            {NAV_ITEMS.map(item => {
+              const active = view === item.id
+              return (
+                <div key={item.id} onClick={() => setView(item.id)}
+                  className="nav-item"
+                  style={{
+                    display:'flex',alignItems:'center',gap:'10px',
+                    padding:'9px 10px',
+                    borderRadius:'8px',
+                    cursor:'pointer',
+                    fontSize:'13px',
+                    fontWeight: active ? 600 : 400,
+                    color: active ? C.t1 : C.t3,
+                    background: active ? C.focus : 'transparent',
+                    borderLeft: `2px solid ${active ? C.red : 'transparent'}`,
+                    paddingLeft: '8px',
+                  }}>
+                  <span style={{fontFamily:F.mono,fontSize:'12px',color:active?C.red:C.t3,lineHeight:1}}>{item.icon}</span>
+                  <span style={{flex:1}}>{item.label}</span>
+                  {item.badge && (
+                    <span style={{
+                      fontFamily:F.mono,
+                      fontSize:'9px',padding:'2px 6px',borderRadius:'9px',fontWeight:600,
+                      background: (item as any).badgeRed ? C.redDim : item.badge === 'IA' ? C.gDim : C.redDim,
+                      color: (item as any).badgeRed ? C.red : item.badge === 'IA' ? C.green : C.t2,
+                      border:`1px solid ${(item as any).badgeRed ? 'rgba(197,24,58,.2)' : item.badge === 'IA' ? 'rgba(5,150,105,.2)' : C.line}`,
+                    }}>{item.badge}</span>
+                  )}
+                </div>
+              )
+            })}
+            {user.role === 'admin' && (
+              <>
+                <div style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.12em',padding:'14px 8px 4px',textTransform:'uppercase'}}>Admin</div>
+                <div onClick={() => router.push('/admin')}
+                  className="nav-item"
+                  style={{display:'flex',alignItems:'center',gap:'10px',padding:'9px 10px',paddingLeft:'8px',borderRadius:'8px',cursor:'pointer',fontSize:'13px',color:C.t3,borderLeft:'2px solid transparent'}}>
+                  <span style={{fontFamily:F.mono,fontSize:'12px',color:C.t3}}>⬡</span>
+                  Painel Admin
+                </div>
+              </>
+            )}
+          </nav>
+
+          {/* Bottom: Credits + User */}
+          <div style={{padding:'12px',borderTop:`1px solid ${C.line}`,display:'flex',flexDirection:'column',gap:'8px'}}>
+            {/* Credits card */}
+            <div style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'10px',padding:'12px',boxShadow:shadow.card}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
+                <span style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Créditos</span>
+                <span style={{fontFamily:F.mono,fontSize:'11px',fontWeight:600,color:creditPct<25?C.red:creditPct<50?C.amber:C.green}}>
+                  {maxCredits===99999 ? '∞' : `${Math.min(user.credits??0,maxCredits)}/${maxCredits}`}
+                </span>
+              </div>
+              {maxCredits !== 99999 && (
+                <>
+                  <div style={{height:'3px',background:C.line,borderRadius:'2px',overflow:'hidden',marginBottom:'6px'}}>
+                    <div style={{height:'100%',width:`${Math.min(100,creditPct)}%`,background:creditPct<25?C.red:creditPct<50?C.amber:C.green,borderRadius:'2px',transition:'width .5s'}}/>
+                  </div>
+                  <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3}}>{usedCredits} de {maxCredits} usados</div>
+                  {creditPct < 30 && (
+                    <div onClick={() => setView('billing')}
+                      style={{marginTop:'8px',padding:'5px 8px',background:C.redDim,border:`1px solid rgba(197,24,58,.15)`,borderRadius:'6px',fontSize:'10px',color:C.red,cursor:'pointer',fontFamily:F.body,fontWeight:500,transition:'background .12s'}}
+                      onMouseEnter={e => e.currentTarget.style.background='rgba(197,24,58,.14)'}
+                      onMouseLeave={e => e.currentTarget.style.background=C.redDim}>
+                      Créditos baixos — upgrade →
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* User row */}
+            <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'8px 10px',borderRadius:'8px',background:C.card,border:`1px solid ${C.line}`,boxShadow:shadow.card}}>
+              <div style={{
+                width:'28px',height:'28px',borderRadius:'50%',
+                background:`linear-gradient(135deg,${C.violet},${C.red})`,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:'11px',fontWeight:700,color:'#fff',flexShrink:0,
+              }}>
+                {(user.name||'U')[0].toUpperCase()}
+              </div>
+              <div style={{flex:1,overflow:'hidden'}}>
+                <div style={{fontSize:'12px',color:C.t1,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:1.3}}>{user.name}</div>
+                <div style={{fontFamily:F.mono,fontSize:'8px',color:planColor,letterSpacing:'0.06em',textTransform:'uppercase',marginTop:'1px'}}>{planLabel}</div>
+              </div>
+              <button onClick={logout}
+                className="sidebar-footer-btn"
+                style={{background:'none',border:'none',color:C.t3,fontSize:'11px',cursor:'pointer',fontFamily:F.body,padding:'4px 6px',borderRadius:'5px',whiteSpace:'nowrap',lineHeight:1}}>
+                Sair
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── MAIN ─────────────────────────────────────────────── */}
+        <div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column'}}>
+
+          {/* Top bar */}
+          <div style={{padding:'0 32px',height:'56px',borderBottom:`1px solid ${C.line}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:`rgba(5,8,15,.92)`,position:'sticky',top:0,zIndex:10,backdropFilter:'blur(12px)',flexShrink:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:'16px'}}>
+              <div style={{fontFamily:F.head,fontSize:'16px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1}}>
+                {view==='generator'?'Gerar Vídeo':view==='videos'?'Biblioteca':view==='rewards'?'Rewards':'Assinatura'}
+              </div>
+              {view === 'generator' && (
+                <span style={{fontFamily:F.mono,fontSize:'9px',background:C.gDim,border:'1px solid rgba(5,150,105,.2)',color:C.green,padding:'3px 8px',borderRadius:'9px',fontWeight:500,letterSpacing:'0.04em'}}>GPT-4o · OpenAI TTS · Pexels</span>
+              )}
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+              <div style={{fontFamily:F.mono,fontSize:'10px',color:C.t3,letterSpacing:'0.04em'}}>
+                {user.name?.split(' ')[0]}
+              </div>
+              <div style={{width:'6px',height:'6px',borderRadius:'50%',background:C.green,boxShadow:'0 0 6px rgba(5,150,105,.6)'}}/>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div style={{padding:'28px 32px',flex:1}}>
+
+            {/* ── GENERATOR ─────────────────────────────────────── */}
+            {view === 'generator' && (
+              <div style={{maxWidth:'960px'}}>
+
+                {/* Stats row */}
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px',marginBottom:'24px'}}>
+                  {[
+                    {label:'Vídeos Gerados', value:videos.length, sub:'total na biblioteca', highlight:true},
+                    {label:'Créditos', value:maxCredits===99999?'∞':Math.min(user.credits??0,maxCredits), sub:maxCredits===99999?'ilimitados':`de ${maxCredits} disponíveis`},
+                    {label:'Plano', value:planLabel, sub:'plano atual', color:planColor},
+                  ].map((stat,i) => (
+                    <div key={i} className="card-hover" style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'12px',padding:'20px 22px',boxShadow:shadow.card,cursor:'default'}}>
+                      <div style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'10px'}}>{stat.label}</div>
+                      <div style={{fontFamily:F.head,fontSize:'28px',fontWeight:800,color:stat.color||(stat.highlight?C.red:C.t1),letterSpacing:'-0.04em',lineHeight:1,marginBottom:'6px'}}>{stat.value}</div>
+                      <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3}}>{stat.sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Generator card */}
+                <div style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'16px',padding:'28px',marginBottom:'16px',boxShadow:shadow.card}}>
+
+                  {/* Card header */}
+                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'24px'}}>
+                    <div>
+                      <div style={{fontFamily:F.head,fontSize:'16px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1,marginBottom:'4px'}}>Agente de Vídeo</div>
+                      <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3}}>Roteiro → Voz → Imagens → Player</div>
+                    </div>
+                    <div style={{display:'flex',gap:'6px'}}>
+                      {['GPT-4o','TTS','Pexels'].map(badge => (
+                        <span key={badge} style={{fontFamily:F.mono,fontSize:'8px',background:C.raised,border:`1px solid ${C.lineHi}`,color:C.t2,padding:'3px 8px',borderRadius:'6px',letterSpacing:'0.04em'}}>
+                          {badge}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Options row */}
+                  <div className="sel-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px',marginBottom:'20px'}}>
+                    <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                      <label style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Tipo de Conteúdo</label>
+                      <select value={contentType} onChange={e=>setContentType(e.target.value)} style={selStyle}>
+                        <option value="faceless">Faceless / Dark Channel</option>
+                        <option value="mystery">Mistério e Conspirações</option>
+                        <option value="horror">Terror e Creepypasta</option>
+                        <option value="crypto">Crypto e Finanças</option>
+                        <option value="asmr">ASMR Dark</option>
+                        <option value="truecrime">True Crime</option>
+                      </select>
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                      <label style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Duração</label>
+                      <select value={duration} onChange={e=>setDuration(e.target.value)} style={selStyle}>
+                        <option value="short">Short / Reel (30–60s)</option>
+                        <option value="medium">Médio (5–10 min)</option>
+                        <option value="long">Longo (15–30 min)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Quick prompts */}
+                  <div style={{marginBottom:'20px'}}>
+                    <div style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'10px'}}>Temas populares</div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px'}}>
+                      {QUICK_PROMPTS.map((qp,i) => {
+                        const active = prompt === qp.text
+                        return (
+                          <div key={i} onClick={() => setPrompt(qp.text)}
+                            className="quick-prompt"
+                            style={{
+                              background: active ? C.focus : C.raised,
+                              border: `1px solid ${active ? C.red : C.line}`,
+                              borderRadius:'10px',padding:'12px 10px',cursor:'pointer',
+                            }}>
+                            <div style={{fontSize:'16px',marginBottom:'5px',lineHeight:1}}>{qp.icon}</div>
+                            <div style={{fontFamily:F.body,fontSize:'11px',fontWeight:600,color:active?C.red:C.t2,lineHeight:1.3,letterSpacing:'-0.01em'}}>{qp.label}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Prompt textarea */}
+                  <div style={{display:'flex',flexDirection:'column',gap:'6px',marginBottom:'20px'}}>
+                    <label style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Prompt / Tema do Vídeo</label>
+                    <textarea
+                      className="textarea-prompt"
+                      value={prompt}
+                      onChange={e => setPrompt(e.target.value)}
+                      placeholder="Ex: Um documentário sobre sociedades secretas que controlam o mundo..."
+                      style={{
+                        background:C.raised,
+                        border:`1px solid ${C.line}`,
+                        borderRadius:'10px',
+                        padding:'14px 16px',
+                        color:C.t1,
+                        fontSize:'13px',
+                        outline:'none',
+                        resize:'vertical',
+                        minHeight:'80px',
+                        fontFamily:F.body,
+                        lineHeight:1.6,
+                        transition:'border-color .15s, box-shadow .15s',
+                      }}
+                    />
+                  </div>
+
+                  {/* Voice + Platforms */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px',marginBottom:'24px'}}>
+                    <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                      <label style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Voz IA</label>
+                      <select value={voice} onChange={e=>setVoice(e.target.value)} style={selStyle}>
+                        <option value="masculine">Grave Masculina (PT-BR)</option>
+                        <option value="feminine">Misteriosa Feminina (PT-BR)</option>
+                        <option value="neutral">Neutro (PT-BR)</option>
+                        <option value="asmr">Sussurrada (ASMR)</option>
+                      </select>
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                      <label style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Plataformas</label>
+                      <div style={{display:'flex',gap:'6px',flexWrap:'wrap',paddingTop:'2px'}}>
+                        {['youtube','tiktok','instagram','shorts'].map(p => {
+                          const on = (platforms||[]).includes(p)
+                          return (
+                            <div key={p} onClick={() => togglePlat(p)}
+                              className="chip"
+                              style={{
+                                padding:'6px 12px',borderRadius:'20px',fontSize:'11px',fontWeight:500,cursor:'pointer',
+                                border:`1px solid ${on ? 'rgba(197,24,58,.4)' : C.line}`,
+                                color: on ? C.red : C.t3,
+                                background: on ? C.redDim : 'transparent',
+                              }}>
+                              {p==='youtube'?'YouTube':p==='tiktok'?'TikTok':p==='instagram'?'Instagram':'Shorts'}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CTA row */}
+                  <div style={{display:'flex',gap:'12px',alignItems:'center'}}>
+                    <button onClick={handleGenerate} disabled={generating || !prompt.trim()}
+                      className="btn-primary"
+                      style={{
+                        padding:'12px 28px',
+                        background: generating || !prompt.trim() ? C.raised : `linear-gradient(135deg,${C.red},#9A1028)`,
+                        color:'#fff',
+                        border:'none',borderRadius:'10px',
+                        fontSize:'13px',fontWeight:700,
+                        cursor: generating || !prompt.trim() ? 'not-allowed' : 'pointer',
+                        opacity: generating || !prompt.trim() ? 0.45 : 1,
+                        flexShrink:0,fontFamily:F.head,
+                        letterSpacing:'-0.02em',
+                      }}>
+                      {generating ? 'Gerando...' : 'Gerar Vídeo com IA →'}
+                    </button>
+                    {generating && (
+                      <>
+                        <div style={{flex:1,height:'3px',background:C.line,borderRadius:'2px',overflow:'hidden'}}>
+                          <div style={{height:'100%',background:`linear-gradient(90deg,${C.red},#E05070)`,borderRadius:'2px',transition:'width .5s',width:progress+'%'}}/>
+                        </div>
+                        <span style={{fontFamily:F.mono,fontSize:'10px',color:C.t3,minWidth:'36px',textAlign:'right'}}>{progress}%</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Logs */}
+                  {logs.length > 0 && (
+                    <div ref={logRef}
+                      style={{background:C.void,border:`1px solid ${C.line}`,borderRadius:'10px',padding:'14px 16px',fontFamily:F.mono,fontSize:'11px',color:C.t1,maxHeight:'136px',overflowY:'auto',marginTop:'16px',lineHeight:1.8}}>
+                      {logs.map((l,i) => {
+                        const line = l || ''
+                        const tag = line.split(' ')[0] || ''
+                        const msg = line.split(' ').slice(1).join(' ')
+                        return (
+                          <div key={i} style={{display:'flex',gap:'10px'}}>
+                            <span style={{color:C.t3,minWidth:'28px',fontSize:'10px'}}>{String(i*3).padStart(2,'0')}s</span>
+                            <span style={{color:line.includes('DONE')?C.green:C.amber,minWidth:'54px',fontWeight:500}}>{tag}</span>
+                            <span style={{color:C.t2}}>{msg}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent videos */}
+                {videos.length > 0 && (
+                  <div style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'14px',overflow:'hidden',boxShadow:shadow.card}}>
+                    <div style={{padding:'16px 22px',borderBottom:`1px solid ${C.line}`,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                      <div>
+                        <div style={{fontFamily:F.head,fontSize:'13px',fontWeight:700,letterSpacing:'-0.025em',color:C.t1}}>Gerados Recentemente</div>
+                        <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,marginTop:'2px'}}>{videos.length} vídeo{videos.length!==1?'s':''} no total</div>
+                      </div>
+                      <button onClick={() => setView('videos')}
+                        className="btn-ghost"
+                        style={{background:'transparent',border:`1px solid ${C.line}`,color:C.t3,borderRadius:'8px',padding:'6px 14px',fontSize:'11px',cursor:'pointer',fontFamily:F.body,fontWeight:500}}>
+                        Ver todos →
+                      </button>
+                    </div>
+                    <div style={{padding:'16px 20px'}}>
+                      <VideoGrid videos={videos.slice(0,3)} onSelect={setSelectedVideo}/>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── VIDEOS ─────────────────────────────────────────── */}
+            {view === 'videos' && (
+              <div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:'24px'}}>
+                  <div>
+                    <h2 style={{fontFamily:F.head,fontSize:'20px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1,marginBottom:'4px'}}>Biblioteca</h2>
+                    <div style={{fontFamily:F.mono,fontSize:'10px',color:C.t3}}>{videos.length} vídeo{videos.length!==1?'s':''} gerado{videos.length!==1?'s':''}</div>
+                  </div>
+                  <button onClick={() => setView('generator')}
+                    className="btn-primary"
+                    style={{background:`linear-gradient(135deg,${C.red},#9A1028)`,color:'#fff',border:'none',borderRadius:'10px',padding:'10px 20px',fontSize:'12px',fontWeight:700,cursor:'pointer',fontFamily:F.head,letterSpacing:'-0.02em'}}>
+                    + Novo Vídeo
+                  </button>
+                </div>
+                {videos.length === 0 ? (
+                  <div style={{textAlign:'center',padding:'80px 20px',color:C.t3}}>
+                    <div style={{fontSize:'40px',marginBottom:'16px',opacity:.25}}>🎬</div>
+                    <div style={{fontFamily:F.head,fontSize:'16px',fontWeight:700,marginBottom:'8px',color:C.t2,letterSpacing:'-0.02em'}}>Nenhum vídeo ainda</div>
+                    <div style={{fontSize:'13px',color:C.t3}}>Gere seu primeiro dark channel agora.</div>
+                  </div>
+                ) : <VideoGrid videos={videos} onSelect={setSelectedVideo}/>}
+              </div>
+            )}
+
+            {/* ── REWARDS ─────────────────────────────────────────── */}
+            {view === 'rewards' && (
+              <div style={{maxWidth:'900px'}}>
+                <div style={{background:C.redDim,border:`1px solid rgba(197,24,58,.15)`,borderRadius:'14px',padding:'20px 24px',marginBottom:'28px'}}>
+                  <div style={{fontFamily:F.head,fontSize:'15px',fontWeight:700,letterSpacing:'-0.025em',color:C.t1,marginBottom:'6px'}}>Sistema de Rewards</div>
+                  <div style={{fontSize:'13px',color:C.t2,lineHeight:1.7,fontWeight:400}}>Complete milestones gerando vídeos e acumulando views. Ganhe até <strong style={{color:C.red,fontWeight:600}}>2 créditos bônus por mês</strong>.</div>
+                </div>
+
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'14px',marginBottom:'32px'}}>
+                  {(rewards||[]).filter((r:any) => r && r.id).map((r:any) => (
+                    <div key={r.id} className="card-hover" style={{background:C.card,border:`1px solid ${r.unlocked?'rgba(5,150,105,.25)':r.eligible?'rgba(197,24,58,.3)':C.line}`,borderRadius:'12px',padding:'20px',opacity:r.unlocked?.65:1,boxShadow:shadow.card}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'14px'}}>
+                        <div style={{fontSize:'28px',lineHeight:1}}>{r.badge}</div>
+                        <div>
+                          <div style={{fontFamily:F.head,fontSize:'13px',fontWeight:700,letterSpacing:'-0.025em',color:r.unlocked?C.green:r.eligible?C.red:C.t1,marginBottom:'2px'}}>
+                            {r.unlocked?'✓ ':''}{r.label}
+                          </div>
+                          <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3}}>
+                            {r.type==='views'?'Milestone de views':'Milestone de criação'}
+                            {r.credits>0&&<span style={{color:C.red,marginLeft:'8px',fontWeight:600}}>+{r.credits} crédito</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {!r.unlocked && (
+                        <div style={{marginBottom:'14px'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',fontFamily:F.mono,fontSize:'9px',color:C.t3,marginBottom:'6px'}}>
+                            <span>Progresso</span><span>{r.progress}/{r.target}</span>
+                          </div>
+                          <div style={{height:'3px',background:C.line,borderRadius:'2px',overflow:'hidden'}}>
+                            <div style={{height:'100%',width:`${Math.min(100,Math.round(r.progress/r.target*100))}%`,background:r.eligible?C.red:C.t3,borderRadius:'2px',transition:'width .6s'}}/>
+                          </div>
+                        </div>
+                      )}
+                      {r.eligible && !r.unlocked && (
+                        <button onClick={() => handleClaimReward(r.id)} disabled={claimingId===r.id}
+                          style={{width:'100%',background:`linear-gradient(135deg,${C.red},#9A1028)`,color:'#fff',border:'none',borderRadius:'8px',padding:'10px',fontSize:'12px',fontWeight:700,cursor:'pointer',opacity:claimingId===r.id?.5:1,fontFamily:F.head,letterSpacing:'-0.01em'}}>
+                          {claimingId===r.id?'Resgatando...':r.credits>0?`Resgatar +${r.credits} crédito`:'Resgatar Badge'}
+                        </button>
+                      )}
+                      {r.unlocked && <div style={{fontFamily:F.mono,fontSize:'10px',color:C.green,textAlign:'center',letterSpacing:'0.04em',fontWeight:500}}>Resgatado ✓</div>}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'14px',padding:'24px',boxShadow:shadow.card}}>
+                  <div style={{fontFamily:F.head,fontSize:'14px',fontWeight:700,letterSpacing:'-0.025em',color:C.t1,marginBottom:'6px'}}>Reportar Views</div>
+                  <div style={{fontSize:'13px',color:C.t2,marginBottom:'20px',lineHeight:1.7}}>Publique no YouTube/TikTok e reporte as views para desbloquear milestones.</div>
+                  {videos.length === 0 ? (
+                    <div style={{textAlign:'center',padding:'24px',color:C.t3,fontSize:'13px'}}>Gere vídeos primeiro.</div>
+                  ) : (
+                    <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                      {(videos||[]).slice(0,5).filter((v:any) => v&&v.id).map((v:any) => (
+                        <div key={v.id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'12px 16px',background:C.raised,border:`1px solid ${C.line}`,borderRadius:'10px'}}>
+                          <div style={{flex:1,fontSize:'12px',color:C.t1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontWeight:500}}>{v.title}</div>
+                          {reportingVideoId === v.id ? (
+                            <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
+                              <input type="number" value={viewsInput} onChange={e=>setViewsInput(e.target.value)} placeholder="ex: 1500"
+                                style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'7px',padding:'6px 10px',color:C.t1,fontSize:'12px',outline:'none',width:'90px',fontFamily:F.body,transition:'border-color .15s'}}
+                                onFocus={e=>e.target.style.borderColor=C.red}
+                                onBlur={e=>e.target.style.borderColor=C.line}/>
+                              <button onClick={() => handleReportViews(v.id)}
+                                style={{background:C.red,color:'#fff',border:'none',borderRadius:'7px',padding:'6px 14px',fontSize:'11px',fontWeight:700,cursor:'pointer',fontFamily:F.head}}>
+                                Salvar
+                              </button>
+                              <button onClick={() => setReportingVideoId('')}
+                                className="btn-ghost"
+                                style={{background:'transparent',border:`1px solid ${C.line}`,color:C.t3,borderRadius:'7px',padding:'6px 10px',fontSize:'11px',cursor:'pointer',fontFamily:F.body}}>
+                                ×
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setReportingVideoId(v.id)}
+                              className="btn-ghost"
+                              style={{background:'transparent',border:`1px solid ${C.line}`,color:C.t3,borderRadius:'7px',padding:'5px 12px',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:F.body,fontWeight:500}}>
+                              + Views
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── BILLING ─────────────────────────────────────────── */}
+            {view === 'billing' && (
+              <div style={{maxWidth:'900px'}}>
+                <div style={{marginBottom:'32px'}}>
+                  <h2 style={{fontFamily:F.head,fontSize:'20px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1,marginBottom:'8px'}}>Assinatura</h2>
+                  <div style={{fontFamily:F.mono,fontSize:'10px',color:C.t3,background:C.card,border:`1px solid ${C.line}`,borderRadius:'8px',padding:'10px 16px',display:'inline-block',boxShadow:shadow.card}}>
+                    1 crédito = 1 vídeo completo · roteiro + voz + imagens + player · renova mensalmente
+                  </div>
+                </div>
+
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:'16px'}}>
+                  {[
+                    {n:'Starter',p:47,credits:20,url:PLAN_URLS.starter,color:C.green,features:['20 vídeos/mês','YouTube + TikTok','Roteiro GPT-4o','Voz IA PT-BR','Garantia 7 dias']},
+                    {n:'Pro',p:97,credits:100,url:PLAN_URLS.pro,color:C.red,hot:true,features:['100 vídeos/mês','Todas as plataformas','Roteiro avançado','Voz personalizada','Suporte prioritário']},
+                    {n:'Enterprise',p:297,credits:999,url:PLAN_URLS.enterprise,color:C.violet,features:['Créditos ilimitados','Multi-usuário','API completa','White-label','Gerente dedicado']},
+                  ].map((pl,i) => {
+                    const isCurrent = user.plan?.toLowerCase() === pl.n.toLowerCase()
+                    return (
+                      <div key={i} style={{
+                        background:C.card,
+                        border:`1px solid ${(pl as any).hot?'rgba(197,24,58,.3)':isCurrent?'rgba(5,150,105,.3)':C.line}`,
+                        borderRadius:'16px',padding:'24px',position:'relative',display:'flex',flexDirection:'column',
+                        boxShadow:(pl as any).hot?`${shadow.card},0 0 40px rgba(197,24,58,.08)`:shadow.card,
+                      }}>
+                        {(pl as any).hot && (
+                          <div style={{position:'absolute',top:'-12px',left:'50%',transform:'translateX(-50%)',background:`linear-gradient(135deg,${C.red},#9A1028)`,color:'#fff',fontSize:'9px',fontWeight:700,padding:'4px 14px',borderRadius:'20px',whiteSpace:'nowrap',letterSpacing:'0.08em',boxShadow:shadow.red}}>
+                            MAIS POPULAR
+                          </div>
+                        )}
+                        <div style={{fontFamily:F.mono,fontSize:'9px',color:pl.color,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:'12px',fontWeight:600}}>{pl.n}</div>
+                        <div style={{fontFamily:F.head,fontSize:'34px',fontWeight:800,letterSpacing:'-0.05em',marginBottom:'14px',lineHeight:1,color:C.t1}}>
+                          R${pl.p}<span style={{fontSize:'12px',fontWeight:400,color:C.t3,letterSpacing:'0'}}>/mês</span>
+                        </div>
+                        <div style={{background:C.raised,border:`1px solid ${C.line}`,borderRadius:'10px',padding:'12px',textAlign:'center',marginBottom:'16px'}}>
+                          <div style={{fontFamily:F.head,fontSize:'24px',fontWeight:800,color:pl.color,letterSpacing:'-0.04em'}}>{pl.credits===999?'∞':pl.credits}</div>
+                          <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,marginTop:'3px'}}>créditos / mês</div>
+                        </div>
+                        <ul style={{listStyle:'none',marginBottom:'20px',flex:1,display:'flex',flexDirection:'column',gap:'8px'}}>
+                          {pl.features.map((f,j) => (
+                            <li key={j} style={{fontSize:'12px',color:C.t2,display:'flex',alignItems:'center',gap:'8px',fontWeight:400}}>
+                              <span style={{color:pl.color,fontSize:'10px',fontWeight:700}}>✓</span>{f}
+                            </li>
+                          ))}
+                        </ul>
+                        <a href={pl.url} target="_blank" rel="noopener noreferrer"
+                          style={{
+                            display:'block',textAlign:'center',
+                            background:(pl as any).hot?`linear-gradient(135deg,${C.red},#9A1028)`:'transparent',
+                            border:(pl as any).hot?'none':`1px solid ${pl.color}`,
+                            color:(pl as any).hot?'#fff':pl.color,
+                            padding:'11px',borderRadius:'10px',fontWeight:700,fontSize:'13px',fontFamily:F.head,
+                            letterSpacing:'-0.02em',
+                            transition:'opacity .15s',
+                          }}
+                          onMouseEnter={e=>(e.currentTarget as HTMLElement).style.opacity='.85'}
+                          onMouseLeave={e=>(e.currentTarget as HTMLElement).style.opacity='1'}>
+                          {isCurrent ? 'Plano atual ✓' : `Assinar ${pl.n} →`}
+                        </a>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+
+      {selectedVideo && <VideoPlayerModal video={selectedVideo} onClose={() => setSelectedVideo(null)}/>}
     </>
   )
 }
 
-function VideoGrid({videos, onSelect}) {
+// ── VIDEO GRID ───────────────────────────────────────────────────────────────
+function VideoGrid({videos, onSelect}: {videos:any[], onSelect:(v:any)=>void}) {
   return (
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:"14px"}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:'12px'}}>
       {(videos||[]).filter(v=>v&&v.id).map(v=>(
         <div key={v.id} onClick={()=>onSelect(v)}
-          style={{background:"#0e1219",border:"1px solid #1e2840",borderRadius:"12px",overflow:"hidden",cursor:"pointer",transition:"all .2s"}}
-          onMouseEnter={e=>{const el=e.currentTarget;el.style.borderColor="#ff3c5c";el.style.transform="translateY(-2px)"}}
-          onMouseLeave={e=>{const el=e.currentTarget;el.style.borderColor="#1e2840";el.style.transform="translateY(0)"}}>
-          <div style={{height:"120px",background:"linear-gradient(135deg,#0d0d1a,#1a0820)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden"}}>
+          style={{background:'#080D1A',border:'1px solid #192436',borderRadius:'12px',overflow:'hidden',cursor:'pointer',transition:'border-color .18s,box-shadow .18s,transform .18s',boxShadow:'0 1px 3px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.02)'}}
+          onMouseEnter={e=>{const el=e.currentTarget;el.style.borderColor='#203050';el.style.transform='translateY(-2px)';el.style.boxShadow='0 8px 24px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)'}}
+          onMouseLeave={e=>{const el=e.currentTarget;el.style.borderColor='#192436';el.style.transform='translateY(0)';el.style.boxShadow='0 1px 3px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.02)'}}>
+
+          {/* Thumbnail */}
+          <div style={{height:'124px',background:'linear-gradient(160deg,#08101C,#060910)',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden'}}>
             {v.images&&v.images[0]
-              ?<img src={v.images[0]} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.55}}/>
-              :<div style={{position:"absolute",inset:0,background:"radial-gradient(circle,rgba(255,60,92,.1),transparent 70%)"}}/>
+              ?<img src={v.images[0]} alt="" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:0.4}}/>
+              :<div style={{position:'absolute',inset:0,background:'radial-gradient(circle at 50% 35%,rgba(197,24,58,.07),transparent 60%)'}}/>
             }
-            <div style={{position:"relative",zIndex:1,width:"44px",height:"44px",background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:"18px",boxShadow:"0 4px 20px rgba(255,60,92,.5)"}}>&#9654;</div>
-            <div style={{position:"absolute",top:"8px",left:"8px",display:"flex",gap:"4px",zIndex:2}}>
-              {(Array.isArray(v.platforms)?v.platforms:[]).slice(0,2).map(p=>(
-                <span key={p} style={{fontSize:"9px",padding:"2px 6px",borderRadius:"4px",background:p==="youtube"?"rgba(255,0,0,.9)":p==="tiktok"?"rgba(0,0,0,.9)":"rgba(188,24,136,.9)",color:"#fff",fontWeight:700}}>
-                  {p==="youtube"?"YT":p==="tiktok"?"TT":"IG"}
+            <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(2,4,10,.7),transparent 50%)'}}/>
+            <div style={{position:'relative',zIndex:1,width:'42px',height:'42px',background:'rgba(197,24,58,.92)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'16px',boxShadow:'0 4px 20px rgba(197,24,58,.45)',backdropFilter:'blur(4px)'}}>▶</div>
+            <div style={{position:'absolute',top:'8px',left:'8px',display:'flex',gap:'4px',zIndex:2}}>
+              {(Array.isArray(v.platforms)?v.platforms:[]).slice(0,2).map((p:string)=>(
+                <span key={p} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'8px',fontWeight:600,padding:'2px 6px',borderRadius:'5px',background:'rgba(2,4,10,.85)',color:'#6E8099',backdropFilter:'blur(4px)',letterSpacing:'0.04em'}}>
+                  {p==='youtube'?'YT':p==='tiktok'?'TT':'IG'}
                 </span>
               ))}
             </div>
-            <div style={{position:"absolute",bottom:"8px",right:"8px",zIndex:2,display:"flex",gap:"4px"}}>
-              {v.hasAudio&&<span style={{fontSize:"9px",padding:"2px 5px",borderRadius:"3px",background:"rgba(0,208,132,.9)",color:"#fff",fontWeight:700}}>VOZ</span>}
-              {v.hasImages&&<span style={{fontSize:"9px",padding:"2px 5px",borderRadius:"3px",background:"rgba(124,58,237,.9)",color:"#fff",fontWeight:700}}>IMG</span>}
+            <div style={{position:'absolute',bottom:'8px',right:'8px',zIndex:2,display:'flex',gap:'4px'}}>
+              {v.hasAudio&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'8px',padding:'2px 6px',borderRadius:'5px',background:'rgba(5,150,105,.9)',color:'#fff',fontWeight:600}}>VOZ</span>}
+              {v.hasImages&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'8px',padding:'2px 6px',borderRadius:'5px',background:'rgba(124,58,237,.9)',color:'#fff',fontWeight:600}}>IMG</span>}
             </div>
           </div>
-          <div style={{padding:"10px 12px"}}>
-            <div style={{fontSize:"12px",fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#f0f2f8",marginBottom:"4px"}}>{v.title||"Sem titulo"}</div>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:"10px",color:"#4a5568"}}>
-              <span>{v.duration==="short"?"30-60s":v.duration==="long"?"15-30min":"5-10min"}</span>
-              <span style={{color:"#ff3c5c",fontWeight:600}}>Assistir</span>
+
+          {/* Info */}
+          <div style={{padding:'10px 14px 12px'}}>
+            <div style={{fontSize:'12px',fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:'#ECF2FA',marginBottom:'6px',fontFamily:"'Inter',sans-serif",letterSpacing:'-0.01em',lineHeight:1.3}}>{v.title||'Sem título'}</div>
+            <div style={{display:'flex',justifyContent:'space-between',fontFamily:"'JetBrains Mono',monospace",fontSize:'9px',color:'#364A62'}}>
+              <span>{v.duration==='short'?'30–60s':v.duration==='long'?'15–30min':'5–10min'}</span>
+              <span style={{color:'rgba(197,24,58,.9)',fontWeight:600,letterSpacing:'0.02em'}}>Assistir →</span>
             </div>
           </div>
         </div>
@@ -50,198 +846,238 @@ function VideoGrid({videos, onSelect}) {
   )
 }
 
-function VideoPlayerModal({video, onClose}) {
-  const canvasRef = React.useRef(null)
-  const audioRef = React.useRef(null)
-  const rafRef = React.useRef(null)
+// ── VIDEO PLAYER MODAL ───────────────────────────────────────────────────────
+function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null)
+  const audioRef = React.useRef<HTMLAudioElement>(null)
+  const animRef = React.useRef<number>(null)
   const [tab, setTab] = React.useState("player")
-  const [playing, setPlaying] = React.useState(false)
-  const [scene, setScene] = React.useState(0)
-  const [imgs, setImgs] = React.useState([])
-  const [ready, setReady] = React.useState(false)
-  const [dl, setDl] = React.useState(false)
+  const [isPlaying, setIsPlaying] = React.useState(false)
+  const [currentScene, setCurrentScene] = React.useState(0)
+  const [downloading, setDownloading] = React.useState(false)
   const [dlPct, setDlPct] = React.useState(0)
-  const [dlMsg, setDlMsg] = React.useState("")
+  const [dlLabel, setDlLabel] = React.useState("")
+  const [loadedImgs, setLoadedImgs] = React.useState<any[]>([])
+  const [imgsReady, setImgsReady] = React.useState(false)
+
+  const M = {
+    bg:    '#02040A',
+    card:  '#080D1A',
+    raised:'#0C1222',
+    line:  '#192436',
+    lineHi:'#203050',
+    red:   '#C5183A',
+    redDim:'rgba(197,24,58,.09)',
+    violet:'#7C3AED',
+    green: '#059669',
+    t1:    '#ECF2FA',
+    t2:    '#6E8099',
+    t3:    '#364A62',
+  }
 
   const images = video.images || []
   const scenes = video.scenes || []
-  const N = Math.max(images.length, scenes.length, 1)
-  const sps = video.duration==="short" ? 3 : video.duration==="long" ? 7 : 5
+  const N = Math.max(scenes.length, images.length, 1)
+  const secPerScene = video.duration === "short" ? 3 : video.duration === "long" ? 8 : 5
 
-  React.useEffect(()=>{
-    if(images.length===0){setReady(true);return}
-    let done=0
-    const loaded=[]
-    images.forEach((url,i)=>{
-      const img=new Image();img.crossOrigin="anonymous"
-      img.onload=()=>{loaded[i]=img;done++;if(done===images.length){setImgs(loaded);setReady(true)}}
-      img.onerror=()=>{loaded[i]=null;done++;if(done===images.length){setImgs(loaded);setReady(true)}}
-      img.src=url
+  React.useEffect(() => {
+    if (images.length === 0) { setImgsReady(true); return }
+    let done = 0
+    const loaded: any[] = []
+    images.forEach((url: string, i: number) => {
+      const img = new Image()
+      img.crossOrigin = "anonymous"
+      img.onload = () => { loaded[i]=img; done++; if(done===images.length){setLoadedImgs(loaded);setImgsReady(true)} }
+      img.onerror = () => { loaded[i]=null; done++; if(done===images.length){setLoadedImgs(loaded);setImgsReady(true)} }
+      img.src = url
     })
-  },[])
+  }, [])
 
-  const drawFrame = React.useCallback((ctx, sc, pct)=>{
-    const W=1280,H=720
+  const drawFrame = (ctx: CanvasRenderingContext2D, sceneIdx: number, pct: number) => {
+    const W=1280, H=720
     ctx.clearRect(0,0,W,H)
-    const img=imgs[sc]||imgs[0]||null
-    if(img){
-      const s=1+pct*0.04
-      ctx.save();ctx.filter="brightness(0.5) saturate(0.7)"
-      ctx.drawImage(img,(W-W*s)/2,(H-H*s)/2,W*s,H*s)
+    const img = loadedImgs[sceneIdx] || loadedImgs[0] || null
+    if (img) {
+      const scale = 1 + pct * 0.04
+      ctx.save()
+      ctx.filter = "brightness(0.45) saturate(0.7)"
+      ctx.drawImage(img, (W-W*scale)/2, (H-H*scale)/2, W*scale, H*scale)
       ctx.restore()
     } else {
-      const g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,600)
-      g.addColorStop(0,"#1a0820");g.addColorStop(1,"#000")
-      ctx.fillStyle=g;ctx.fillRect(0,0,W,H)
+      const g = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,640)
+      g.addColorStop(0,"#120818"); g.addColorStop(1,"#020408")
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H)
     }
-    const ov=ctx.createLinearGradient(0,H*.4,0,H)
-    ov.addColorStop(0,"rgba(0,0,0,0)");ov.addColorStop(1,"rgba(0,0,0,.9)")
-    ctx.fillStyle=ov;ctx.fillRect(0,0,W,H)
-    const txt=scenes[sc]?scenes[sc].text||(video.script||"").substring(sc*90,(sc+1)*90):(video.script||"").substring(sc*90,(sc+1)*90)
-    if(txt){
+    const ov = ctx.createLinearGradient(0,H*0.4,0,H)
+    ov.addColorStop(0,"rgba(0,0,0,0)"); ov.addColorStop(1,"rgba(0,0,0,0.94)")
+    ctx.fillStyle=ov; ctx.fillRect(0,0,W,H)
+    const text = scenes[sceneIdx] ? (scenes[sceneIdx].text||"") : (video.script||"").substring(sceneIdx*100,(sceneIdx+1)*100)
+    if (text) {
       ctx.save()
-      ctx.fillStyle="rgba(0,0,0,.6)";ctx.fillRect(60,H-136,W-120,116)
-      ctx.fillStyle="#fff";ctx.font="bold 28px Arial";ctx.textAlign="center"
-      ctx.shadowColor="rgba(0,0,0,.95)";ctx.shadowBlur=8
-      const words=txt.split(" ");let line="";let y=H-94
-      for(const w of words){const t=line?line+" "+w:w;if(ctx.measureText(t).width>W-140&&line){ctx.fillText(line,W/2,y);line=w;y+=36}else line=t}
-      if(line)ctx.fillText(line,W/2,y)
+      ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillRect(40,H-144,W-80,124)
+      ctx.fillStyle="#fff"; ctx.font="bold 28px 'Inter',Arial"; ctx.textAlign="center"
+      ctx.shadowColor="rgba(0,0,0,0.9)"; ctx.shadowBlur=12
+      const words=text.split(" "); let line=""; let y=H-96
+      for (const w of words) {
+        const t = line ? line+" "+w : w
+        if (ctx.measureText(t).width > W-180 && line) { ctx.fillText(line,W/2,y); line=w; y+=38 } else line=t
+      }
+      if (line) ctx.fillText(line,W/2,y)
       ctx.restore()
     }
-    ctx.fillStyle="rgba(0,0,0,.7)";ctx.fillRect(18,18,162,36)
-    ctx.fillStyle="#ff3c5c";ctx.font="bold 14px Arial";ctx.textAlign="left";ctx.shadowBlur=0
-    ctx.fillText("NOCTURN.AI",30,42)
-    ctx.fillStyle="rgba(255,60,92,.85)";ctx.fillRect(W-72,18,54,30)
-    ctx.fillStyle="#fff";ctx.font="bold 12px Arial";ctx.textAlign="center"
-    ctx.fillText((sc+1)+"/"+N,W-45,37)
-    const prog=(sc+pct)/N
-    ctx.fillStyle="rgba(255,60,92,.9)";ctx.fillRect(0,H-4,W*prog,4)
-  },[imgs,scenes,video.script,N])
+    ctx.fillStyle="rgba(0,0,0,0.7)"; ctx.fillRect(16,16,152,36)
+    ctx.fillStyle="#C5183A"; ctx.font="bold 13px 'Space Grotesk',Arial"; ctx.textAlign="left"; ctx.shadowBlur=0
+    ctx.fillText("NOCTURN.AI",28,39)
+    ctx.fillStyle="rgba(197,24,58,0.88)"; ctx.fillRect(W-68,16,52,28)
+    ctx.fillStyle="#fff"; ctx.font="bold 11px 'JetBrains Mono',monospace"; ctx.textAlign="center"
+    ctx.fillText((sceneIdx+1)+"/"+N, W-42, 34)
+    ctx.fillStyle="rgba(197,24,58,0.85)"; ctx.fillRect(0,H-4,W*((sceneIdx+pct)/N),4)
+  }
 
-  React.useEffect(()=>{
-    if(ready&&canvasRef.current){
-      const ctx=canvasRef.current.getContext("2d")
-      drawFrame(ctx,0,0)
+  const startPlay = () => {
+    if (!canvasRef.current || !imgsReady) return
+    const ctx = canvasRef.current.getContext("2d")!
+    setIsPlaying(true)
+    if (audioRef.current && video.audioBase64) {
+      audioRef.current.currentTime=0
+      audioRef.current.play().catch(()=>{})
     }
-  },[ready,drawFrame])
-
-  const startPlay=()=>{
-    if(!ready||!canvasRef.current)return
-    setPlaying(true);setScene(0)
-    if(audioRef.current&&video.audioBase64){audioRef.current.currentTime=0;audioRef.current.play().catch(()=>{})}
-    let sc=0,t0=performance.now()
-    const loop=()=>{
-      const pct=Math.min((performance.now()-t0)/1000/sps,1)
-      drawFrame(canvasRef.current.getContext("2d"),sc,pct)
-      if(pct>=1){sc++;t0=performance.now();setScene(sc)
-        if(sc>=N){drawFrame(canvasRef.current.getContext("2d"),N-1,1);setPlaying(false);setScene(0);if(audioRef.current){audioRef.current.pause();audioRef.current.currentTime=0}return}
+    let sc=0, scStart=performance.now()
+    const loop = () => {
+      const now=performance.now()
+      const pct=Math.min((now-scStart)/1000/secPerScene,1)
+      drawFrame(ctx,sc,pct)
+      if (pct>=1) {
+        sc++; scStart=now; setCurrentScene(sc)
+        if (sc>=N) {
+          drawFrame(ctx,N-1,1); setIsPlaying(false); setCurrentScene(0)
+          if(audioRef.current){audioRef.current.pause();audioRef.current.currentTime=0}
+          return
+        }
       }
-      rafRef.current=requestAnimationFrame(loop)
+      animRef.current=requestAnimationFrame(loop)
     }
-    rafRef.current=requestAnimationFrame(loop)
+    animRef.current=requestAnimationFrame(loop)
   }
 
-  const stopPlay=()=>{
-    setPlaying(false);setScene(0)
-    if(rafRef.current)cancelAnimationFrame(rafRef.current)
-    if(audioRef.current){audioRef.current.pause();audioRef.current.currentTime=0}
-    if(canvasRef.current&&ready)drawFrame(canvasRef.current.getContext("2d"),0,0)
+  const stopPlay = () => {
+    setIsPlaying(false); setCurrentScene(0)
+    if (animRef.current) cancelAnimationFrame(animRef.current)
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime=0 }
+    if (canvasRef.current && imgsReady) drawFrame(canvasRef.current.getContext("2d")!,0,0)
   }
 
-  React.useEffect(()=>()=>{if(rafRef.current)cancelAnimationFrame(rafRef.current)},[])
+  React.useEffect(() => {
+    if (imgsReady && canvasRef.current) drawFrame(canvasRef.current.getContext("2d")!,0,0)
+  }, [imgsReady])
 
-  const download=async()=>{
-    if(!images.length){alert("Gere um novo video para ter imagens.");return}
-    setDl(true);setDlPct(0);setDlMsg("Preparando...")
-    try{
-      const off=document.createElement("canvas")
-      off.width=1280;off.height=720
-      const ctx=off.getContext("2d")
-      const stream=off.captureStream(30)
-      if(video.audioBase64){
-        try{
+  React.useEffect(() => () => { if(animRef.current) cancelAnimationFrame(animRef.current) }, [])
+
+  const downloadVideo = async () => {
+    if (images.length===0) { alert("Gere um novo vídeo para ter imagens."); return }
+    setDownloading(true); setDlPct(0); setDlLabel("Preparando...")
+    try {
+      const off = document.createElement("canvas")
+      off.width=1280; off.height=720
+      const ctx = off.getContext("2d")!
+      const stream = off.captureStream(30)
+      if (video.audioBase64) {
+        try {
           const ac=new AudioContext()
           const buf=await(await fetch(video.audioBase64)).arrayBuffer()
           const dec=await ac.decodeAudioData(buf)
           const dest=ac.createMediaStreamDestination()
           const src=ac.createBufferSource()
-          src.buffer=dec;src.connect(dest);src.start()
+          src.buffer=dec; src.connect(dest); src.start()
           dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t))
-        }catch(e){console.log("audio",e)}
+        } catch(e){console.log("audio",e)}
       }
-      const chunks=[]
+      const chunks: Blob[] = []
       const mime=MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")?"video/webm;codecs=vp9,opus":"video/webm"
       const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:3000000})
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)}
       rec.start(100)
-      const FPS=30,total=N*sps*FPS
-      for(let f=0;f<total;f++){
-        const sc=Math.min(Math.floor(f/(sps*FPS)),N-1)
-        const pct=(f%(sps*FPS))/(sps*FPS)
-        drawFrame(ctx,sc,pct)
-        if(f%FPS===0){setDlPct(Math.round(f/total*90));setDlMsg("Cena "+(sc+1)+" de "+N+"...");await new Promise(r=>setTimeout(r,0))}
+      const FPS=30, totalFrames=N*secPerScene*FPS
+      for (let f=0;f<totalFrames;f++) {
+        const sc=Math.floor(f/(secPerScene*FPS))
+        const pct=(f%(secPerScene*FPS))/(secPerScene*FPS)
+        drawFrame(ctx,Math.min(sc,N-1),pct)
+        if (f%30===0) { setDlPct(Math.round((f/totalFrames)*90)); setDlLabel("Renderizando cena "+(Math.min(sc,N-1)+1)+" de "+N+"..."); await new Promise(r=>setTimeout(r,0)) }
       }
-      setDlMsg("Finalizando...");rec.stop()
+      setDlLabel("Finalizando..."); rec.stop()
       await new Promise(res=>{rec.onstop=res})
       setDlPct(97)
       const blob=new Blob(chunks,{type:mime})
       const url=URL.createObjectURL(blob)
       const a=document.createElement("a")
-      a.href=url;a.download=(video.title||"video").replace(/[^a-zA-Z0-9]/g,"_").substring(0,50)+".webm"
-      document.body.appendChild(a);a.click();document.body.removeChild(a)
+      a.href=url; a.download=(video.title||"video").replace(/[^a-zA-Z0-9]/g,"_").substring(0,50)+".webm"
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      setDlPct(100);setDlMsg("Baixado!")
-      setTimeout(()=>{setDl(false);setDlPct(0)},2500)
-    }catch(e){console.error(e);alert("Erro: "+e.message);setDl(false);setDlPct(0)}
+      setDlPct(100); setDlLabel("Download concluído!")
+      setTimeout(()=>{setDownloading(false);setDlPct(0);setDlLabel("")},2500)
+    } catch(e:any) {
+      console.error(e); alert("Erro ao gerar vídeo: "+e.message); setDownloading(false); setDlPct(0)
+    }
   }
 
-  return(
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.93)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"16px",backdropFilter:"blur(6px)"}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:"#080b10",border:"1px solid #1e2840",borderRadius:"18px",width:"100%",maxWidth:"800px",maxHeight:"94vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 32px 100px rgba(0,0,0,.95)"}}>
+  return (
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"16px",backdropFilter:"blur(12px)"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:M.bg,border:`1px solid ${M.lineHi}`,borderRadius:"20px",width:"100%",maxWidth:"820px",maxHeight:"95vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 32px 80px rgba(0,0,0,.9),0 4px 16px rgba(0,0,0,.5)"}}>
 
-        <div style={{padding:"12px 16px",borderBottom:"1px solid #1e2840",display:"flex",alignItems:"center",gap:"10px",flexShrink:0}}>
+        {/* Header */}
+        <div style={{padding:"14px 18px",borderBottom:`1px solid ${M.line}`,display:"flex",alignItems:"center",gap:"12px",flexShrink:0}}>
           <div style={{flex:1,overflow:"hidden"}}>
-            <div style={{fontSize:"14px",fontWeight:800,color:"#f0f2f8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{video.title||"Video"}</div>
-            <div style={{display:"flex",gap:"4px",marginTop:"3px",flexWrap:"wrap"}}>
-              {(video.platforms||[]).map(p=><span key={p} style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:p==="youtube"?"rgba(255,0,0,.2)":"rgba(255,255,255,.08)",color:p==="youtube"?"#ff5555":"#aaa",fontWeight:700}}>{p}</span>)}
-              {video.hasAudio&&<span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:"rgba(0,208,132,.15)",color:"#00d084",fontWeight:700}}>ElevenLabs</span>}
-              {images.length>0&&<span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:"rgba(124,58,237,.15)",color:"#a78bfa",fontWeight:700}}>{images.length} cenas</span>}
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:"14px",fontWeight:700,color:M.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",letterSpacing:"-0.025em"}}>{video.title||"Vídeo"}</div>
+            <div style={{display:"flex",gap:"5px",marginTop:"5px",flexWrap:"wrap"}}>
+              {(video.platforms||[]).map((p:string)=>(
+                <span key={p} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",padding:"2px 7px",borderRadius:"5px",background:"rgba(255,255,255,.04)",color:M.t3,fontWeight:500,border:`1px solid ${M.line}`}}>{p}</span>
+              ))}
+              {video.hasAudio&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",padding:"2px 7px",borderRadius:"5px",background:"rgba(5,150,105,.1)",color:M.green,fontWeight:500,border:"1px solid rgba(5,150,105,.2)"}}>OpenAI TTS</span>}
+              {images.length>0&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",padding:"2px 7px",borderRadius:"5px",background:"rgba(124,58,237,.1)",color:"#A78BFA",fontWeight:500,border:"1px solid rgba(124,58,237,.2)"}}>{images.length} cenas</span>}
             </div>
           </div>
-          <div style={{display:"flex",gap:"3px",background:"#0e1219",borderRadius:"7px",padding:"2px"}}>
+          {/* Tabs */}
+          <div style={{display:"flex",gap:"2px",background:M.raised,borderRadius:"10px",padding:"3px",border:`1px solid ${M.line}`}}>
             {["player","roteiro","tags"].map(t=>(
-              <button key={t} onClick={()=>setTab(t)} style={{background:tab===t?"linear-gradient(135deg,#ff3c5c,#ff6b35)":"transparent",color:tab===t?"#fff":"#8892a4",border:"none",borderRadius:"5px",padding:"5px 10px",fontSize:"11px",fontWeight:700,cursor:"pointer"}}>
+              <button key={t} onClick={()=>setTab(t)} style={{
+                background:tab===t?M.red:'transparent',
+                color:tab===t?'#fff':M.t3,
+                border:'none',borderRadius:"7px",padding:"5px 14px",
+                fontSize:"11px",fontWeight:tab===t?700:400,cursor:"pointer",
+                fontFamily:"'Inter',sans-serif",letterSpacing:"-0.01em",
+                transition:"all .12s",
+              }}>
                 {t==="player"?"Player":t==="roteiro"?"Roteiro":"Tags"}
               </button>
             ))}
           </div>
-          <button onClick={()=>{stopPlay();onClose()}} style={{background:"rgba(255,255,255,.06)",border:"1px solid #1e2840",color:"#8892a4",fontSize:"14px",cursor:"pointer",width:"28px",height:"28px",borderRadius:"7px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>x</button>
+          <button onClick={()=>{stopPlay();onClose()}}
+            style={{background:"rgba(255,255,255,.04)",border:`1px solid ${M.line}`,color:M.t2,fontSize:"14px",cursor:"pointer",width:"30px",height:"30px",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"sans-serif",transition:"all .12s"}}
+            onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,.09)";e.currentTarget.style.color=M.t1}}
+            onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,.04)";e.currentTarget.style.color=M.t2}}>
+            ×
+          </button>
         </div>
 
         <div style={{flex:1,overflow:"auto"}}>
-          {tab==="player"&&<div>
 
+          {tab==="player"&&<div>
             <div style={{position:"relative",background:"#000",lineHeight:0}}>
-              <canvas ref={canvasRef} width={1280} height={720} style={{width:"100%",display:"block",maxHeight:"400px"}}/>
-              {!playing&&ready&&images.length>0&&(
-                <div onClick={startPlay} style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",background:"rgba(0,0,0,.1)"}}>
-                  <div style={{width:"72px",height:"72px",background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"28px",color:"#fff",boxShadow:"0 8px 40px rgba(255,60,92,.7)"}}>&#9654;</div>
-                </div>
-              )}
-              {!ready&&(
-                <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000"}}>
-                  <div style={{color:"#8892a4",fontSize:"13px",textAlign:"center"}}>
-                    <div style={{fontSize:"28px",marginBottom:"8px",opacity:0.4}}>&#9654;</div>
-                    Carregando...
+              <canvas ref={canvasRef} width={1280} height={720} style={{width:"100%",display:"block",aspectRatio:"16/9",maxHeight:"420px"}}/>
+              {!isPlaying&&imgsReady&&(
+                <div onClick={startPlay} style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",background:"rgba(0,0,0,.15)"}}>
+                  <div style={{width:"68px",height:"68px",background:"rgba(197,24,58,.92)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"26px",color:"#fff",boxShadow:"0 8px 40px rgba(197,24,58,.5)",backdropFilter:"blur(4px)",transition:"transform .15s"}}
+                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.transform="scale(1.08)"}
+                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.transform="scale(1)"}>
+                    ▶
                   </div>
                 </div>
               )}
-              {images.length===0&&ready&&(
-                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#0d0820,#000)",gap:"12px"}}>
-                  <div style={{fontSize:"36px",opacity:0.4}}>&#127916;</div>
-                  <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:"13px",fontWeight:700,color:"#f0f2f8",marginBottom:"5px"}}>Video sem imagens</div>
-                    <div style={{fontSize:"11px",color:"#4a5568"}}>Gere um novo video para ver o player completo</div>
+              {!imgsReady&&(
+                <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000"}}>
+                  <div style={{textAlign:"center",color:M.t3,fontSize:"13px"}}>
+                    <div style={{width:"20px",height:"20px",border:`2px solid ${M.lineHi}`,borderTopColor:M.red,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
+                    Carregando imagens...
                   </div>
                 </div>
               )}
@@ -249,76 +1085,103 @@ function VideoPlayerModal({video, onClose}) {
 
             {video.audioBase64&&<audio ref={audioRef} src={video.audioBase64} style={{display:"none"}}/>}
 
-            <div style={{padding:"12px 16px",borderBottom:"1px solid #1e2840",display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
-              {ready&&(!playing
-                ?<button onClick={startPlay} style={{background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 20px",fontSize:"13px",fontWeight:700,cursor:"pointer"}}>
-                  &#9654; Reproduzir{video.hasAudio?" com narracao":""}
+            <div style={{padding:"14px 18px",borderBottom:`1px solid ${M.line}`,display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+              {imgsReady&&(!isPlaying
+                ?<button onClick={startPlay} style={{background:`linear-gradient(135deg,${M.red},#9A1028)`,color:"#fff",border:"none",borderRadius:"9px",padding:"9px 22px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"'Space Grotesk',sans-serif",letterSpacing:"-0.02em",boxShadow:"0 4px 20px rgba(197,24,58,.25)"}}>
+                  ▶ Reproduzir{video.hasAudio?" com narração":""}
                 </button>
-                :<button onClick={stopPlay} style={{background:"#1e2840",color:"#f0f2f8",border:"none",borderRadius:"8px",padding:"9px 18px",fontSize:"13px",fontWeight:700,cursor:"pointer"}}>&#9632; Parar</button>
+                :<button onClick={stopPlay} style={{background:M.raised,color:M.t1,border:`1px solid ${M.line}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>■ Parar</button>
               )}
               {images.length>0&&(
-                <button onClick={download} disabled={dl}
-                  style={{background:dl?"#1e2840":"linear-gradient(135deg,#6d28d9,#a855f7)",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 18px",fontSize:"13px",fontWeight:700,cursor:dl?"not-allowed":"pointer",opacity:dl?0.8:1}}>
-                  {dl?"Gerando...":"&#11123; Baixar .webm"}
+                <button onClick={downloadVideo} disabled={downloading}
+                  style={{background:downloading?"transparent":"rgba(124,58,237,.12)",color:downloading?M.t3:"#A78BFA",border:`1px solid ${downloading?M.line:"rgba(124,58,237,.3)"}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:downloading?"not-allowed":"pointer",opacity:downloading?.6:1,fontFamily:"'Inter',sans-serif",letterSpacing:"-0.01em",transition:"all .15s"}}>
+                  {downloading?"Gerando...":"↓ Baixar .webm"}
                 </button>
               )}
-              {video.hasAudio&&<span style={{fontSize:"11px",color:"#00d084",fontWeight:600}}>Narracao ElevenLabs</span>}
+              {video.hasAudio&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.green,fontWeight:500,letterSpacing:"0.02em",display:"flex",alignItems:"center",gap:"5px"}}>
+                <span style={{width:"6px",height:"6px",borderRadius:"50%",background:M.green,display:"inline-block",boxShadow:"0 0 6px rgba(5,150,105,.5)"}}/>
+                Narração ativa
+              </span>}
             </div>
 
-            {dl&&(
-              <div style={{padding:"8px 16px",borderBottom:"1px solid #1e2840"}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:"10px",color:"#4a5568",marginBottom:"4px"}}>
-                  <span>{dlMsg}</span><span>{dlPct}%</span>
+            {downloading&&(
+              <div style={{padding:"10px 18px",borderBottom:`1px solid ${M.line}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.t3,marginBottom:"6px"}}>
+                  <span>{dlLabel}</span><span>{dlPct}%</span>
                 </div>
-                <div style={{height:"4px",background:"#1e2840",borderRadius:"2px",overflow:"hidden"}}>
-                  <div style={{height:"100%",width:dlPct+"%",background:"linear-gradient(90deg,#6d28d9,#a855f7)",borderRadius:"2px",transition:"width .3s"}}/>
+                <div style={{height:"3px",background:M.line,borderRadius:"2px",overflow:"hidden"}}>
+                  <div style={{height:"100%",width:dlPct+"%",background:"linear-gradient(90deg,#7C3AED,#A855F7)",borderRadius:"2px",transition:"width .2s"}}/>
                 </div>
               </div>
             )}
 
             {images.length>0&&(
-              <div style={{padding:"10px 16px"}}>
-                <div style={{fontSize:"10px",color:"#4a5568",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:"7px",fontFamily:"monospace"}}>{N} cenas — clique para navegar</div>
+              <div style={{padding:"12px 18px"}}>
+                <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:M.t3,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"8px"}}>{N} cenas</div>
                 <div style={{display:"flex",gap:"6px",overflowX:"auto",paddingBottom:"4px"}}>
-                  {images.map((img,i)=>(
-                    <div key={i} onClick={()=>{if(rafRef.current)cancelAnimationFrame(rafRef.current);setPlaying(false);setScene(i);if(canvasRef.current&&ready){drawFrame(canvasRef.current.getContext("2d"),i,0)}}}
-                      style={{flexShrink:0,borderRadius:"6px",overflow:"hidden",cursor:"pointer",border:scene===i&&!playing?"2px solid #ff3c5c":"2px solid transparent",width:"90px",height:"56px",position:"relative"}}>
-                      <img src={img} alt="" style={{width:"90px",height:"56px",objectFit:"cover",filter:"brightness(0.6)"}}/>
-                      <div style={{position:"absolute",bottom:"2px",left:"3px",fontSize:"8px",color:"#fff",fontWeight:700}}>C{i+1}</div>
+                  {images.map((img:string,i:number)=>(
+                    <div key={i}
+                      onClick={()=>{if(animRef.current)cancelAnimationFrame(animRef.current);setIsPlaying(false);setCurrentScene(i);if(canvasRef.current&&imgsReady)drawFrame(canvasRef.current.getContext("2d")!,i,0)}}
+                      style={{flexShrink:0,borderRadius:"8px",overflow:"hidden",cursor:"pointer",border:currentScene===i&&!isPlaying?`2px solid ${M.red}`:`2px solid ${M.line}`,transition:"border-color .12s",position:"relative",width:"90px",height:"56px"}}>
+                      <img src={img} alt="" style={{width:"90px",height:"56px",objectFit:"cover",filter:"brightness(0.5)"}}/>
+                      <div style={{position:"absolute",bottom:"3px",left:"5px",fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:"rgba(255,255,255,.7)",fontWeight:600}}>C{i+1}</div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+
+            {images.length===0&&(
+              <div style={{padding:"36px",textAlign:"center",color:M.t3}}>
+                <div style={{fontSize:"32px",marginBottom:"12px",opacity:.2}}>🎬</div>
+                <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:"13px",fontWeight:700,color:M.t2,marginBottom:"6px",letterSpacing:"-0.02em"}}>Sem imagens neste vídeo</div>
+                <div style={{fontSize:"12px",lineHeight:1.7,fontFamily:"'Inter',sans-serif",color:M.t3}}>Gerado antes do novo pipeline.<br/>Gere um novo para imagens + narração + download.</div>
+              </div>
+            )}
           </div>}
 
-          {tab==="roteiro"&&<div style={{padding:"16px"}}>
-            <div style={{background:"#0a0d13",border:"1px solid #1a2235",borderRadius:"10px",padding:"14px",marginBottom:"12px",maxHeight:"280px",overflowY:"auto"}}>
-              <pre style={{fontSize:"13px",color:"#d0d8e8",lineHeight:1.9,whiteSpace:"pre-wrap",margin:0,fontFamily:"inherit"}}>{video.script||"Roteiro nao disponivel."}</pre>
+          {tab==="roteiro"&&<div style={{padding:"18px"}}>
+            <div style={{background:M.raised,border:`1px solid ${M.line}`,borderRadius:"10px",padding:"16px",marginBottom:"14px",maxHeight:"300px",overflowY:"auto"}}>
+              <pre style={{fontFamily:"'Inter',sans-serif",fontSize:"13px",color:"#C8D6E8",lineHeight:1.9,whiteSpace:"pre-wrap",margin:0}}>{video.script||"Roteiro não disponível."}</pre>
             </div>
-            {video.description&&<div style={{background:"rgba(124,58,237,.08)",border:"1px solid rgba(124,58,237,.2)",borderRadius:"8px",padding:"11px",marginBottom:"12px"}}>
-              <p style={{fontSize:"12px",color:"#8892a4",lineHeight:1.7,margin:0}}>{video.description}</p>
-            </div>}
+            {video.description&&(
+              <div style={{background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.15)",borderRadius:"10px",padding:"14px",marginBottom:"14px"}}>
+                <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:"#A78BFA",fontWeight:600,marginBottom:"6px",letterSpacing:"0.1em",textTransform:"uppercase"}}>Descrição para publicação</div>
+                <p style={{fontFamily:"'Inter',sans-serif",fontSize:"12px",color:M.t2,lineHeight:1.75,margin:0}}>{video.description}</p>
+              </div>
+            )}
             <div style={{display:"flex",gap:"8px"}}>
-              <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(video.script||"").catch(()=>{})} style={{background:"linear-gradient(135deg,#ff3c5c,#ff6b35)",color:"#fff",border:"none",borderRadius:"7px",padding:"8px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer"}}>
+              <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(video.script||"").catch(()=>{})}
+                style={{background:`linear-gradient(135deg,${M.red},#9A1028)`,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 18px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"'Space Grotesk',sans-serif",letterSpacing:"-0.01em"}}>
                 Copiar roteiro
               </button>
-              {video.description&&<button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(video.description||"").catch(()=>{})} style={{background:"transparent",border:"1px solid #7c3aed",color:"#a78bfa",borderRadius:"7px",padding:"8px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer"}}>
-                Copiar descricao
-              </button>}
+              {video.description&&(
+                <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(video.description||"").catch(()=>{})}
+                  style={{background:"transparent",border:"1px solid rgba(124,58,237,.3)",color:"#A78BFA",borderRadius:"8px",padding:"9px 18px",fontSize:"12px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"background .12s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="rgba(124,58,237,.08)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  Copiar descrição
+                </button>
+              )}
             </div>
           </div>}
 
-          {tab==="tags"&&<div style={{padding:"16px"}}>
-            <div style={{display:"flex",flexWrap:"wrap",gap:"7px",marginBottom:"14px"}}>
-              {(video.tags||[]).map((tag,i)=>(
-                <span key={i} style={{background:"rgba(0,208,132,.08)",border:"1px solid rgba(0,208,132,.2)",color:"#00d084",padding:"5px 12px",borderRadius:"14px",fontSize:"12px"}}>#{tag}</span>
+          {tab==="tags"&&<div style={{padding:"18px"}}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"16px"}}>
+              {(video.tags||[]).map((tag:string,i:number)=>(
+                <span key={i} style={{background:"rgba(5,150,105,.07)",border:"1px solid rgba(5,150,105,.18)",color:"#059669",padding:"6px 14px",borderRadius:"20px",fontFamily:"'JetBrains Mono',monospace",fontSize:"11px",fontWeight:500,letterSpacing:"0.02em"}}>#{tag}</span>
               ))}
             </div>
-            {(video.tags||[]).length>0&&<button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText((video.tags||[]).map(t=>"#"+t).join(" ")).catch(()=>{})} style={{background:"transparent",border:"1px solid #1e2840",color:"#8892a4",borderRadius:"7px",padding:"7px 14px",fontSize:"12px",cursor:"pointer"}}>
-              Copiar todas as tags
-            </button>}
+            {(video.tags||[]).length>0&&(
+              <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText((video.tags||[]).map((t:string)=>"#"+t).join(" ")).catch(()=>{})}
+                style={{background:"transparent",border:`1px solid ${M.line}`,color:M.t3,borderRadius:"8px",padding:"8px 16px",fontSize:"12px",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:500,transition:"all .12s"}}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor=M.lineHi;e.currentTarget.style.color=M.t2}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor=M.line;e.currentTarget.style.color=M.t3}}>
+                Copiar todas as tags
+              </button>
+            )}
           </div>}
+
         </div>
       </div>
     </div>

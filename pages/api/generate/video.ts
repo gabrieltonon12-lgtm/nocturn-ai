@@ -2,11 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
 import { getUsers, saveUsers, saveVideo, generateId, ensureAdmin } from '../../../lib/db'
 
-const VOICE_IDS: Record<string,string> = {
-  masculine: 'TxGEqnHWrfWFTfGW9XjX',
-  feminine:  'EXAVITQu4vr4xnSDxMaL',
-  neutral:   'pNInz6obpgDQGcFmaJgB',
-  asmr:      'MF3mGyEYCl7XYWbV9V6O',
+// OpenAI TTS voices (mapeadas das opcoes do dashboard)
+const OPENAI_VOICES: Record<string,string> = {
+  masculine: 'onyx',    // grave, masculina — ideal dark channel
+  feminine:  'nova',    // feminina, clara
+  neutral:   'echo',    // neutra
+  asmr:      'fable',   // dramatica, suave
 }
 
 // Busca imagens no Pexels para cada cena
@@ -28,34 +29,37 @@ async function fetchPexelsImages(queries: string[], pexelsKey: string): Promise<
   return images
 }
 
-// Gera audio com ElevenLabs e retorna base64
-async function generateAudio(text: string, voiceId: string, elevenKey: string): Promise<string> {
+// Gera audio com OpenAI TTS e retorna base64
+async function generateAudio(text: string, voice: string, openaiKey: string): Promise<string> {
   try {
-    // Limita a 900 chars para nao estourar cota
-    const narration = text.replace(/\[.*?\]/g, '').trim().substring(0, 900)
-    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    const narration = text.replace(/\[.*?\]/g, '').trim().substring(0, 4000)
+    const r = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
-        'xi-api-key': elevenKey,
+        'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json',
-        'Accept': 'audio/mpeg',
       },
       body: JSON.stringify({
-        text: narration,
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0.4, use_speaker_boost: true }
+        model: 'tts-1',
+        input: narration,
+        voice: voice,
+        speed: 0.95,
       })
     })
-    if (!r.ok) { console.error('ElevenLabs status:', r.status, await r.text()); return '' }
+    if (!r.ok) {
+      const errBody = await r.text()
+      console.error(`OpenAI TTS error ${r.status}:`, errBody)
+      return ''
+    }
     const arrayBuf = await r.arrayBuffer()
     const uint8 = new Uint8Array(arrayBuf)
     let binary = ''
     const chunkSize = 8192
     for (let i = 0; i < uint8.length; i += chunkSize) {
-      binary += String.fromCharCode(...uint8.slice(i, i + chunkSize))
+      binary += String.fromCharCode.apply(null, Array.from(uint8.slice(i, i + chunkSize)))
     }
     return 'data:audio/mpeg;base64,' + btoa(binary)
-  } catch(e) { console.error('ElevenLabs error:', e); return '' }
+  } catch(e) { console.error('OpenAI TTS error:', e); return '' }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -80,7 +84,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!prompt?.trim()) return res.status(400).json({ error: 'Prompt obrigatorio' })
 
     const openaiKey = process.env.OPENAI_API_KEY || ''
-    const elevenKey = process.env.ELEVENLABS_API_KEY || ''
     const pexelsKey = process.env.PEXELS_API_KEY || ''
 
     let title = prompt.substring(0, 60)
@@ -146,10 +149,11 @@ RETORNE APENAS JSON valido:
       tags = ['misterio', 'conspiracao', 'dark channel', 'verdade', 'faceless']
     }
 
-    // ── STEP 2: ElevenLabs gera audio da narracao ─────────────────────────
-    if (elevenKey) {
-      const voiceId = VOICE_IDS[voice] || VOICE_IDS.masculine
-      audioBase64 = await generateAudio(script, voiceId, elevenKey)
+    // ── STEP 2: OpenAI TTS gera audio da narracao ────────────────────────
+    if (openaiKey && script) {
+      const openaiVoice = OPENAI_VOICES[voice] || OPENAI_VOICES.masculine
+      audioBase64 = await generateAudio(script, openaiVoice, openaiKey)
+      console.log('OpenAI TTS:', audioBase64 ? `OK (${Math.round(audioBase64.length/1024)}kb)` : 'FAILED')
     }
 
     // ── STEP 3: Pexels busca imagens para cada cena ───────────────────────

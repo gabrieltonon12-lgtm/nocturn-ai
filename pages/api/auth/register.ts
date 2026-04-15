@@ -16,12 +16,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(409).json({ error: 'Email já cadastrado' })
     }
     
-    const credits: Record<string,number> = { starter:20, pro:100, enterprise:99999 }
     const hashed = await bcrypt.hash(password, 10)
     const user = {
       id: generateId(), name, email,
       password: hashed,
-      plan, credits: credits[plan] || 20,
+      plan: 'free', credits: 0,
       role: 'user', active: true,
       videoCount: 0,
       createdAt: new Date().toISOString(),
