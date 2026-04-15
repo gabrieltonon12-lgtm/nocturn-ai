@@ -65,7 +65,7 @@ async function generateAudio(text: string, voice: string, openaiKey: string): Pr
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   try {
-    ensureAdmin()
+    await ensureAdmin()
     const auth = req.headers.authorization
     if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token obrigatorio' })
     const secret = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try { decoded = jwt.verify(auth.split(' ')[1], secret) }
     catch { return res.status(401).json({ error: 'Token invalido. Faca login novamente.' }) }
 
-    const users = getUsers()
+    const users = await getUsers()
     const idx = users.findIndex((u: any) => u.id === decoded.id || u.email === decoded.email)
     if (idx === -1) return res.status(404).json({ error: 'Usuario nao encontrado' })
     const user = users[idx]
@@ -167,7 +167,7 @@ RETORNE APENAS JSON valido:
     // ── STEP 4: Salva e retorna ───────────────────────────────────────────
     users[idx].credits = Math.max(0, (user.credits ?? 1) - 1)
     users[idx].videoCount = (user.videoCount ?? 0) + 1
-    saveUsers(users)
+    await saveUsers(users)
 
     const video = {
       id: generateId(),
@@ -189,7 +189,7 @@ RETORNE APENAS JSON valido:
       status: 'ready',
       createdAt: new Date().toISOString(),
     }
-    saveVideo(video)
+    await saveVideo(video)
 
     res.status(200).json({ video, creditsRemaining: users[idx].credits })
   } catch(e: any) {

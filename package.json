@@ -8,12 +8,13 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "14.2.3",
-    "react": "^18",
-    "react-dom": "^18",
-    "openai": "^4.47.1",
+    "@upstash/redis": "^1.37.0",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
+    "next": "14.2.3",
+    "openai": "^4.47.1",
+    "react": "^18",
+    "react-dom": "^18",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

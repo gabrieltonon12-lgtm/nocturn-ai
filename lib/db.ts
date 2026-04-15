@@ -1,59 +1,37 @@
-import fs from 'fs'
-import path from 'path'
+import { Redis } from '@upstash/redis'
 
-const DB_PATH = '/tmp/nocturn_db.json'
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+})
 
-interface DB {
-  users: any[]
-  videos: any[]
+export async function getUsers(): Promise<any[]> {
+  const users = await redis.get<any[]>('users')
+  return users || []
 }
 
-function readDB(): DB {
-  try {
-    if (fs.existsSync(DB_PATH)) {
-      return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'))
-    }
-  } catch {}
-  return { users: [], videos: [] }
+export async function saveUsers(users: any[]): Promise<void> {
+  await redis.set('users', users)
 }
 
-function writeDB(db: DB) {
-  try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2))
-  } catch (e) {
-    console.error('writeDB error:', e)
-  }
+export async function getVideos(userId?: string): Promise<any[]> {
+  const videos = await redis.get<any[]>('videos')
+  const all = videos || []
+  if (userId) return all.filter((v: any) => v.userId === userId)
+  return all
 }
 
-export function getUsers(): any[] {
-  return readDB().users
-}
-
-export function saveUsers(users: any[]) {
-  const db = readDB()
-  db.users = users
-  writeDB(db)
-}
-
-export function getVideos(userId?: string): any[] {
-  const videos = readDB().videos
-  if (userId) return videos.filter((v: any) => v.userId === userId)
-  return videos
-}
-
-export function saveVideo(video: any) {
-  const db = readDB()
-  db.videos = [video, ...(db.videos || [])]
-  writeDB(db)
+export async function saveVideo(video: any): Promise<void> {
+  const videos = await getVideos()
+  await redis.set('videos', [video, ...videos])
 }
 
 export function generateId(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36)
 }
 
-// Seed admin user if no users exist
-export function ensureAdmin() {
-  const users = getUsers()
+export async function ensureAdmin(): Promise<void> {
+  const users = await getUsers()
   if (users.length === 0) {
     const bcrypt = require('bcryptjs')
     const adminEmail = process.env.ADMIN_EMAIL || 'gabrieltonon12@gmail.com'
@@ -70,7 +48,7 @@ export function ensureAdmin() {
       videoCount: 0,
       createdAt: new Date().toISOString(),
     })
-    saveUsers(users)
+    await saveUsers(users)
     console.log('Admin seeded:', adminEmail)
   }
 }

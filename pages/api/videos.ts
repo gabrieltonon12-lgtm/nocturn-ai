@@ -6,20 +6,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
   
   try {
-    ensureAdmin()
+    await ensureAdmin()
     const auth = req.headers.authorization
     if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token obrigatório' })
     const token = auth.split(' ')[1]
     const secret = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
-    
+
     let decoded: any
     try {
       decoded = jwt.verify(token, secret)
     } catch {
       return res.status(401).json({ error: 'Token inválido' })
     }
-    
-    const videos = getVideos(decoded.id)
+
+    const videos = await getVideos(decoded.id)
     res.status(200).json({ videos })
   } catch (e: any) {
     console.error('Videos error:', e)

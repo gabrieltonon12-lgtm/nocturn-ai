@@ -132,7 +132,7 @@ async function sendWelcomeEmail(email: string, name: string, plan: string, passw
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   try {
-    ensureAdmin()
+    await ensureAdmin()
     const p = req.body
     const event = (p.event || p.type || p.status || '').toLowerCase()
     const email = p.customer?.email || p.buyer?.email || p.email || ''
@@ -147,7 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const planPrices: Record<string,number> = { starter:47, pro:97, enterprise:297 }
     const credits: Record<string,number> = { starter:20, pro:100, enterprise:99999 }
-    const users = getUsers()
+    const users = await getUsers()
     const idx = users.findIndex((u: any) => u.email === email)
 
     if (event.includes('approved') || event.includes('paid') || event.includes('active') || event.includes('complete')) {
@@ -168,7 +168,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         users[idx].plan = plan
         users[idx].credits = credits[plan]
       }
-      saveUsers(users)
+      await saveUsers(users)
 
       // Fire pixels
       if (email) {
@@ -183,11 +183,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (event.includes('cancel') || event.includes('refund')) {
-      if (idx !== -1) { users[idx].active = false; users[idx].credits = 0; saveUsers(users) }
+      if (idx !== -1) { users[idx].active = false; users[idx].credits = 0; await saveUsers(users) }
     }
 
     if (event.includes('renew') || event.includes('rebill')) {
-      if (idx !== -1) { users[idx].credits = credits[users[idx].plan] || 20; users[idx].active = true; saveUsers(users) }
+      if (idx !== -1) { users[idx].credits = credits[users[idx].plan] || 20; users[idx].active = true; await saveUsers(users) }
     }
 
     res.status(200).json({ ok: true })

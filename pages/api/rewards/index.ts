@@ -26,21 +26,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const secret = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
   
   try {
-    ensureAdmin()
+    await ensureAdmin()
     const auth = req.headers.authorization
     if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token obrigatório' })
     let decoded: any
     try { decoded = jwt.verify(auth.split(' ')[1], secret) } 
     catch { return res.status(401).json({ error: 'Token inválido' }) }
 
-    const users = getUsers()
+    const users = await getUsers()
     const idx = users.findIndex((u: any) => u.id === decoded.id || u.email === decoded.email)
     if (idx === -1) return res.status(404).json({ error: 'Usuário não encontrado' })
     const user = users[idx]
 
     // GET — retorna status dos rewards do usuário
     if (req.method === 'GET') {
-      const videos = getVideos(user.id)
+      const videos = await getVideos(user.id)
       const videoCount = videos.length
       const unlockedIds: string[] = user.unlockedRewards || []
       const currentMonth = new Date().toISOString().substring(0, 7)
@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const viewCount = parseInt(views) || 0
         if (viewCount < 0 || viewCount > 10000000) return res.status(400).json({ error: 'Views inválidas' })
         users[idx].totalViews = (user.totalViews || 0) + viewCount
-        saveUsers(users)
+        await saveUsers(users)
         return res.status(200).json({ ok: true, totalViews: users[idx].totalViews })
       }
 
@@ -88,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const unlockedIds: string[] = user.unlockedRewards || []
         if (unlockedIds.includes(rewardId)) return res.status(400).json({ error: 'Reward já resgatado' })
 
-        const videos = getVideos(user.id)
+        const videos = await getVideos(user.id)
         const videoCount = videos.length
         let eligible = false
 
@@ -109,7 +109,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (milestone.credits > 0 && bonusThisMonth >= MAX_BONUS_CREDITS_PER_MONTH) {
           // Desbloqueia o badge mas não dá crédito (cap atingido)
           users[idx].unlockedRewards = [...unlockedIds, rewardId]
-          saveUsers(users)
+          await saveUsers(users)
           return res.status(200).json({ ok: true, creditsEarned: 0, badge: true, message: 'Badge desbloqueado! Limite de créditos bônus do mês atingido.' })
         }
 
@@ -120,7 +120,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           users[idx].bonusCreditsMonth = currentMonth
           users[idx].bonusCreditsGiven = bonusThisMonth + milestone.credits
         }
-        saveUsers(users)
+        await saveUsers(users)
 
         return res.status(200).json({ 
           ok: true, 
