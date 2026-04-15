@@ -473,8 +473,10 @@ function VideoPlayerModal({video, onClose}) {
   const scenes = video.scenes || []
   const images = video.images || []
   const totalScenes = Math.max(scenes.length, images.length, 1)
+  const hasMedia = images.length > 0 || video.audioBase64
 
   const play = () => {
+    if (!hasMedia) return
     setPlaying(true)
     setCurrentScene(0)
     if (audioRef.current && video.audioBase64) {
@@ -506,6 +508,7 @@ function VideoPlayerModal({video, onClose}) {
     <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:'20px',backdropFilter:'blur(6px)'}}>
       <div onClick={e=>e.stopPropagation()} style={{background:'#080b10',border:'1px solid #1e2840',borderRadius:'18px',width:'100%',maxWidth:'780px',maxHeight:'92vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 32px 100px rgba(0,0,0,.9)'}}>
 
+        {/* Header */}
         <div style={{padding:'14px 18px',borderBottom:'1px solid #1e2840',display:'flex',alignItems:'center',gap:'10px',flexShrink:0}}>
           <div style={{flex:1,overflow:'hidden'}}>
             <div style={{fontSize:'14px',fontWeight:800,color:'#f0f2f8',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{video.title||'Video'}</div>
@@ -527,26 +530,54 @@ function VideoPlayerModal({video, onClose}) {
 
         <div style={{flex:1,overflow:'auto'}}>
 
+          {/* PLAYER TAB */}
           {tab==='player'&&<div>
             <div style={{position:'relative',background:'#000',aspectRatio:'16/9',overflow:'hidden',maxHeight:'360px'}}>
-              {curImg
-                ?<img src={curImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',filter:'brightness(0.5) saturate(0.7)',transition:'opacity .6s'}}/>
-                :<div style={{width:'100%',height:'100%',background:'radial-gradient(ellipse at center,#180820,#000)',display:'flex',alignItems:'center',justifyContent:'center'}}><span style={{fontSize:'40px',opacity:0.2}}>&#127916;</span></div>
-              }
-              <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.85) 0%,transparent 55%)'}}/>
-              {curText&&(playing||currentScene>0)&&(
-                <div style={{position:'absolute',bottom:'22px',left:'16px',right:'16px',fontSize:'15px',fontWeight:700,color:'#fff',lineHeight:1.5,textShadow:'0 2px 10px rgba(0,0,0,.95)',textAlign:'center'}}>
+
+              {/* Video com imagens */}
+              {curImg&&<img src={curImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',filter:'brightness(0.5) saturate(0.7)',transition:'opacity .6s'}}/>}
+
+              {/* Fallback quando nao tem imagens — video antigo */}
+              {!hasMedia&&(
+                <div style={{width:'100%',height:'100%',background:'linear-gradient(135deg,#0d0820,#000)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'16px',padding:'20px',boxSizing:'border-box'}}>
+                  <div style={{fontSize:'36px'}}>🎬</div>
+                  <div style={{textAlign:'center'}}>
+                    <div style={{fontSize:'14px',fontWeight:800,color:'#f0f2f8',marginBottom:'8px'}}>Video sem midia gerada</div>
+                    <div style={{fontSize:'12px',color:'#8892a4',lineHeight:1.6,maxWidth:'320px'}}>
+                      Este video foi gerado antes do novo pipeline. Gere um novo video para ter imagens do Pexels e narracao do ElevenLabs.
+                    </div>
+                  </div>
+                  <div style={{background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',color:'#fff',borderRadius:'8px',padding:'8px 18px',fontSize:'12px',fontWeight:700,cursor:'pointer'}} onClick={onClose}>
+                    Gerar novo video
+                  </div>
+                </div>
+              )}
+
+              {/* Overlay gradiente */}
+              {curImg&&<div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.85) 0%,transparent 55%)'}}/>}
+
+              {/* Legenda / Subtitulo da cena */}
+              {curImg&&curText&&(playing||currentScene>0)&&(
+                <div style={{position:'absolute',bottom:'22px',left:'16px',right:'16px',fontSize:'15px',fontWeight:700,color:'#fff',lineHeight:1.5,textShadow:'0 2px 10px rgba(0,0,0,.95)',textAlign:'center',background:'rgba(0,0,0,.4)',borderRadius:'8px',padding:'8px 12px'}}>
                   {curText.substring(0,110)}{curText.length>110?'...':''}
                 </div>
               )}
-              <div style={{position:'absolute',top:'10px',left:'12px',display:'flex',alignItems:'center',gap:'5px',background:'rgba(0,0,0,.65)',borderRadius:'5px',padding:'3px 8px'}}>
+
+              {/* Watermark */}
+              {hasMedia&&<div style={{position:'absolute',top:'10px',left:'12px',display:'flex',alignItems:'center',gap:'5px',background:'rgba(0,0,0,.65)',borderRadius:'5px',padding:'3px 8px'}}>
                 <div style={{width:'14px',height:'14px',background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',borderRadius:'3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'6px',fontWeight:800,color:'#fff'}}>DC</div>
                 <span style={{fontSize:'9px',color:'#fff',fontWeight:700,opacity:0.85}}>NOCTURN.AI</span>
-              </div>
+              </div>}
+
+              {/* Contador de cena */}
               {playing&&<div style={{position:'absolute',top:'10px',right:'12px',background:'rgba(255,60,92,.9)',borderRadius:'4px',padding:'2px 7px',fontSize:'9px',fontWeight:700,color:'#fff'}}>{currentScene+1}/{totalScenes}</div>}
-              {!playing&&<div onClick={play} style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+
+              {/* Botao play */}
+              {hasMedia&&!playing&&<div onClick={play} style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
                 <div style={{width:'64px',height:'64px',background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px',color:'#fff',boxShadow:'0 8px 40px rgba(255,60,92,.6)'}}>&#9654;</div>
               </div>}
+
+              {/* Barra de progresso das cenas */}
               {playing&&<div style={{position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'rgba(255,255,255,.15)',display:'flex',gap:'2px',padding:'0 2px'}}>
                 {Array.from({length:totalScenes}).map((_,i)=>(
                   <div key={i} style={{flex:1,height:'100%',background:i<=currentScene?'#ff3c5c':'rgba(255,255,255,.2)',borderRadius:'2px'}}/>
@@ -554,9 +585,11 @@ function VideoPlayerModal({video, onClose}) {
               </div>}
             </div>
 
+            {/* Audio element */}
             {video.audioBase64&&<audio ref={audioRef} src={video.audioBase64} style={{display:'none'}}/>}
 
-            <div style={{padding:'12px 18px',borderBottom:'1px solid #1e2840',display:'flex',gap:'10px',alignItems:'center',flexWrap:'wrap'}}>
+            {/* Controles */}
+            {hasMedia&&<div style={{padding:'12px 18px',borderBottom:'1px solid #1e2840',display:'flex',gap:'10px',alignItems:'center',flexWrap:'wrap'}}>
               {!playing
                 ?<button onClick={play} style={{background:'linear-gradient(135deg,#ff3c5c,#ff6b35)',color:'#fff',border:'none',borderRadius:'8px',padding:'9px 20px',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
                   &#9654; Reproduzir{video.hasAudio?' com narracao':''}
@@ -564,11 +597,12 @@ function VideoPlayerModal({video, onClose}) {
                 :<button onClick={stop} style={{background:'#1e2840',color:'#f0f2f8',border:'none',borderRadius:'8px',padding:'9px 18px',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>&#9632; Parar</button>
               }
               {video.hasAudio
-                ?<span style={{fontSize:'12px',color:'#00d084',fontWeight:600}}>Narracao ativa via ElevenLabs</span>
-                :<span style={{fontSize:'11px',color:'#4a5568'}}>Sem audio — configure ELEVENLABS_API_KEY na Vercel</span>
+                ?<span style={{fontSize:'12px',color:'#00d084',fontWeight:600}}>Narracao ElevenLabs ativa</span>
+                :images.length>0&&<span style={{fontSize:'11px',color:'#4a5568'}}>Sem audio — verifique ELEVENLABS_API_KEY na Vercel</span>
               }
-            </div>
+            </div>}
 
+            {/* Grid de cenas */}
             {images.length>0&&<div style={{padding:'12px 18px'}}>
               <div style={{fontSize:'10px',color:'#4a5568',letterSpacing:'1.5px',textTransform:'uppercase',marginBottom:'8px',fontFamily:'monospace'}}>{images.length} cenas — Pexels</div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:'5px'}}>
@@ -582,6 +616,7 @@ function VideoPlayerModal({video, onClose}) {
             </div>}
           </div>}
 
+          {/* ROTEIRO TAB */}
           {tab==='roteiro'&&<div style={{padding:'18px'}}>
             <div style={{background:'#0a0d13',border:'1px solid #1a2235',borderRadius:'10px',padding:'16px',marginBottom:'12px',maxHeight:'300px',overflowY:'auto'}}>
               <pre style={{fontSize:'13px',color:'#d0d8e8',lineHeight:1.9,whiteSpace:'pre-wrap',margin:0,fontFamily:'inherit'}}>{video.script||'Roteiro nao disponivel.'}</pre>
@@ -596,6 +631,7 @@ function VideoPlayerModal({video, onClose}) {
             </button>
           </div>}
 
+          {/* TAGS TAB */}
           {tab==='tags'&&<div style={{padding:'18px'}}>
             <div style={{display:'flex',flexWrap:'wrap',gap:'8px',marginBottom:'14px'}}>
               {(video.tags||[]).map((tag,i)=>(
