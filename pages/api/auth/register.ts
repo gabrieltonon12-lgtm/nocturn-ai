@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const user = {
       id: generateId(), name, email,
       password: hashed,
-      plan: 'free', credits: 0,
+      plan: 'free', credits: 1,  // 1 vídeo grátis para ativar o usuário
       role: 'user', active: true,
       videoCount: 0,
       createdAt: new Date().toISOString(),
