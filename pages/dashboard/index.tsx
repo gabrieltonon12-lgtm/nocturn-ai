@@ -105,21 +105,6 @@ export default function Dashboard() {
       .then(r => r.json()).then(d => setVideos(d.videos || []))
     fetch('/api/rewards', { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json()).then(d => setRewards(d.rewards || []))
-    // Handle YouTube OAuth callback
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('view') === 'canal' || params.get('youtube_connected')) {
-      setView('canal')
-      // Refresh user data from server
-      fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d?.user) { localStorage.setItem('user', JSON.stringify(d.user)); setUser(d.user) } })
-        .catch(() => {})
-      window.history.replaceState({}, '', '/dashboard')
-    }
-    if (params.get('youtube_error')) {
-      alert('Erro ao conectar YouTube: ' + params.get('youtube_error'))
-      window.history.replaceState({}, '', '/dashboard')
-    }
   }, [])
 
   useEffect(() => {
@@ -241,8 +226,7 @@ export default function Dashboard() {
   const NAV_ITEMS = [
     { id:'generator', icon:'◈', label:'Gerar Vídeo', badge:'IA', badgeColor: C.green, badgeBg: C.gDim },
     { id:'videos', icon:'▤', label:'Biblioteca', badge: videos.length > 0 ? String(videos.length) : undefined },
-    { id:'canal', icon:'▶', label:'Canal YouTube', badge: user.youtube?.channelId ? '●' : undefined, badgeColor: user.youtube?.channelId ? C.red : C.t3 },
-    { id:'rewards', icon:'◆', label:'Rewards', badge: eligibleRewards.length > 0 ? String(eligibleRewards.length) : undefined, badgeColor: C.red, badgeBg: C.redDim, badgeRed: true },
+{ id:'rewards', icon:'◆', label:'Rewards', badge: eligibleRewards.length > 0 ? String(eligibleRewards.length) : undefined, badgeColor: C.red, badgeBg: C.redDim, badgeRed: true },
     { id:'billing', icon:'◎', label:'Assinatura' },
   ]
 
@@ -410,7 +394,7 @@ export default function Dashboard() {
           <div style={{padding:'0 32px',height:'56px',borderBottom:`1px solid ${C.line}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:`rgba(5,8,15,.92)`,position:'sticky',top:0,zIndex:10,backdropFilter:'blur(12px)',flexShrink:0}}>
             <div style={{display:'flex',alignItems:'center',gap:'16px'}}>
               <div style={{fontFamily:F.head,fontSize:'16px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1}}>
-                {view==='generator'?'Gerar Vídeo':view==='videos'?'Biblioteca':view==='canal'?'Canal YouTube':view==='rewards'?'Rewards':'Assinatura'}
+                {view==='generator'?'Gerar Vídeo':view==='videos'?'Biblioteca':view==='rewards'?'Rewards':'Assinatura'}
               </div>
               {view === 'generator' && (
                 <span style={{fontFamily:F.mono,fontSize:'9px',background:C.gDim,border:'1px solid rgba(5,150,105,.2)',color:C.green,padding:'3px 8px',borderRadius:'9px',fontWeight:500,letterSpacing:'0.04em'}}>GPT-4o · OpenAI TTS · Pexels</span>
@@ -854,270 +838,12 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* ── CANAL YOUTUBE ─────────────────────────────────── */}
-            {view === 'canal' && (
-              <ChannelStudioView user={user} />
-            )}
-
           </div>
         </div>
       </div>
 
       {selectedVideo && <VideoPlayerModal video={selectedVideo} onClose={() => setSelectedVideo(null)}/>}
     </>
-  )
-}
-
-// ── CHANNEL STUDIO ───────────────────────────────────────────────────────────
-function ChannelStudioView({ user }: { user: any }) {
-  const [metrics, setMetrics] = React.useState<any>(null)
-  const [loading, setLoading] = React.useState(true)
-  const [tab, setTab] = React.useState<'overview'|'videos'|'analytics'>('overview')
-
-  const C2 = { bg:'#02040A', card:'#080D1A', raised:'#0C1222', line:'#192436', lineHi:'#203050', red:'#C5183A', green:'#059669', violet:'#7C3AED', amber:'#D97706', t1:'#ECF2FA', t2:'#6E8099', t3:'#364A62' }
-  const F2 = { body:"'Inter',system-ui,sans-serif", head:"'Space Grotesk',system-ui,sans-serif", mono:"'JetBrains Mono',monospace" }
-
-  React.useEffect(() => {
-    const token = localStorage.getItem('token') || ''
-    fetch('/api/youtube/metrics', { headers: { Authorization: 'Bearer ' + token } })
-      .then(r => r.json())
-      .then(d => { setMetrics(d); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
-
-  const connectYouTube = () => {
-    const token = localStorage.getItem('token') || ''
-    window.location.href = `/api/youtube/connect?token=${encodeURIComponent(token)}`
-  }
-
-  const disconnectYouTube = () => {
-    if (!confirm('Desconectar o canal do YouTube?')) return
-    const token = localStorage.getItem('token') || ''
-    fetch('/api/youtube/disconnect', { method: 'POST', headers: { Authorization: 'Bearer ' + token } })
-      .then(() => { setMetrics({ connected: false }); const u = JSON.parse(localStorage.getItem('user')||'{}'); delete u.youtube; localStorage.setItem('user', JSON.stringify(u)) })
-  }
-
-  const fmt = (n: number) => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n)
-
-  // Simple SVG bar chart
-  const BarChart = ({ data, metricKey, color, label }: { data: any[], metricKey: string, color: string, label: string }) => {
-    if (!data || data.length === 0) return <div style={{color:C2.t3,fontSize:'12px',textAlign:'center',padding:'20px'}}>Sem dados disponíveis</div>
-    const max = Math.max(...data.map((d: any) => d[metricKey] || 0), 1)
-    const W = 100, H = 60
-    return (
-      <div>
-        <div style={{fontFamily:F2.mono,fontSize:'9px',color:C2.t3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'8px'}}>{label}</div>
-        <svg viewBox={`0 0 ${data.length * (W / data.length) * data.length} ${H + 20}`} style={{width:'100%',height:'80px'}}>
-          {data.map((d: any, i: number) => {
-            const bW = (W * data.length / data.length) - 2
-            const bH = ((d[metricKey] || 0) / max) * H
-            const x = i * (W * data.length / data.length)
-            return (
-              <g key={i}>
-                <rect x={x + 1} y={H - bH} width={Math.max(bW - 1, 1)} height={bH} fill={color} opacity="0.8" rx="2"/>
-                {i % 7 === 0 && <text x={x + bW/2} y={H + 14} textAnchor="middle" fill={C2.t3} fontSize="8" fontFamily="monospace">
-                  {d.date?.slice(5)}
-                </text>}
-              </g>
-            )
-          })}
-        </svg>
-      </div>
-    )
-  }
-
-  if (loading) return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'300px',color:C2.t3,fontFamily:F2.body,gap:'10px'}}>
-      <div style={{width:'16px',height:'16px',borderRadius:'50%',border:`2px solid ${C2.lineHi}`,borderTopColor:C2.red,animation:'spin 0.8s linear infinite'}}/>
-      Carregando métricas...
-    </div>
-  )
-
-  if (!metrics?.connected) return (
-    <div style={{maxWidth:'540px',margin:'40px auto',textAlign:'center'}}>
-      <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'20px',padding:'48px 32px'}}>
-        <div style={{fontSize:'48px',marginBottom:'20px'}}>📺</div>
-        <div style={{fontFamily:F2.head,fontSize:'22px',fontWeight:800,color:C2.t1,marginBottom:'10px',letterSpacing:'-0.03em'}}>Conecte seu Canal do YouTube</div>
-        <div style={{fontFamily:F2.body,fontSize:'14px',color:C2.t2,lineHeight:1.7,marginBottom:'32px'}}>
-          Veja em tempo real as métricas do seu canal, performance dos vídeos, crescimento de inscritos, visualizações e muito mais — direto aqui no dashboard.
-        </div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'32px',textAlign:'left'}}>
-          {[
-            { icon:'👥', label:'Inscritos em tempo real' },
-            { icon:'👁️', label:'Views e impressões' },
-            { icon:'📊', label:'Gráfico de crescimento 28 dias' },
-            { icon:'🎬', label:'Performance dos vídeos' },
-            { icon:'⏱️', label:'Tempo de exibição' },
-            { icon:'❤️', label:'Likes e comentários' },
-          ].map((f, i) => (
-            <div key={i} style={{display:'flex',alignItems:'center',gap:'8px',background:C2.raised,borderRadius:'8px',padding:'10px 12px',border:`1px solid ${C2.line}`}}>
-              <span style={{fontSize:'16px'}}>{f.icon}</span>
-              <span style={{fontFamily:F2.body,fontSize:'12px',color:C2.t2}}>{f.label}</span>
-            </div>
-          ))}
-        </div>
-        {!process.env.NEXT_PUBLIC_GOOGLE_CONFIGURED && (
-          <div style={{background:'rgba(217,119,6,.08)',border:'1px solid rgba(217,119,6,.2)',borderRadius:'10px',padding:'12px 16px',marginBottom:'20px',textAlign:'left'}}>
-            <div style={{fontFamily:F2.mono,fontSize:'9px',color:'#D97706',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:'4px'}}>Config necessária</div>
-            <div style={{fontFamily:F2.body,fontSize:'12px',color:C2.t2,lineHeight:1.6}}>
-              Para ativar esta função, o administrador precisa configurar <code style={{color:'#D97706'}}>GOOGLE_CLIENT_ID</code> e <code style={{color:'#D97706'}}>GOOGLE_CLIENT_SECRET</code> nas variáveis de ambiente do Vercel.
-            </div>
-          </div>
-        )}
-        <button onClick={connectYouTube}
-          style={{background:'linear-gradient(135deg,#C5183A,#8B0A22)',border:'none',color:'#fff',padding:'14px 32px',borderRadius:'10px',fontFamily:F2.head,fontSize:'14px',fontWeight:700,cursor:'pointer',width:'100%',letterSpacing:'-0.02em'}}>
-          Conectar YouTube →
-        </button>
-        <div style={{fontFamily:F2.body,fontSize:'11px',color:C2.t3,marginTop:'12px'}}>Acesso somente leitura · Não publicamos nada no seu canal</div>
-      </div>
-    </div>
-  )
-
-  const { channel, videos: ytVideos, analytics } = metrics
-
-  const tabStyle = (t: string) => ({
-    background: tab === t ? C2.red : 'transparent',
-    color: tab === t ? '#fff' : C2.t3,
-    border: 'none', borderRadius: '7px', padding: '6px 14px',
-    fontSize: '11px', fontWeight: tab === t ? 700 : 400,
-    cursor: 'pointer', fontFamily: F2.body, transition: 'all .15s',
-  })
-
-  return (
-    <div style={{maxWidth:'1040px'}}>
-      {/* Channel header */}
-      <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'16px',padding:'24px 28px',marginBottom:'20px',display:'flex',alignItems:'center',gap:'20px'}}>
-        {channel.thumbnail
-          ? <img src={channel.thumbnail} alt="" style={{width:'64px',height:'64px',borderRadius:'50%',objectFit:'cover',flexShrink:0,border:`2px solid ${C2.red}`}}/>
-          : <div style={{width:'64px',height:'64px',borderRadius:'50%',background:`linear-gradient(135deg,${C2.red},${C2.violet})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px',flexShrink:0}}>📺</div>
-        }
-        <div style={{flex:1}}>
-          <div style={{fontFamily:F2.head,fontSize:'18px',fontWeight:800,color:C2.t1,letterSpacing:'-0.03em',marginBottom:'4px'}}>{channel.title}</div>
-          <div style={{fontFamily:F2.mono,fontSize:'10px',color:C2.t3,letterSpacing:'0.04em'}}>{channel.customUrl || channel.id}</div>
-        </div>
-        <div style={{display:'flex',gap:'24px',textAlign:'center'}}>
-          {[
-            { label:'Inscritos', value:fmt(channel.subscribers) },
-            { label:'Visualizações', value:fmt(channel.totalViews) },
-            { label:'Vídeos', value:fmt(channel.videoCount) },
-          ].map((s,i) => (
-            <div key={i}>
-              <div style={{fontFamily:F2.head,fontSize:'22px',fontWeight:800,color:C2.t1,letterSpacing:'-0.04em'}}>{s.value}</div>
-              <div style={{fontFamily:F2.mono,fontSize:'8px',color:C2.t3,textTransform:'uppercase',letterSpacing:'0.08em',marginTop:'2px'}}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-        <button onClick={disconnectYouTube}
-          style={{background:'transparent',border:`1px solid ${C2.line}`,color:C2.t3,padding:'6px 12px',borderRadius:'7px',fontSize:'11px',cursor:'pointer',fontFamily:F2.body}}>
-          Desconectar
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div style={{display:'flex',gap:'4px',background:C2.raised,borderRadius:'10px',padding:'4px',border:`1px solid ${C2.line}`,marginBottom:'20px',width:'fit-content'}}>
-        {(['overview','videos','analytics'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={tabStyle(t)}>
-            {t === 'overview' ? 'Visão Geral' : t === 'videos' ? 'Vídeos Recentes' : 'Analytics 28d'}
-          </button>
-        ))}
-      </div>
-
-      {/* Overview */}
-      {tab === 'overview' && analytics.length > 0 && (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px'}}>
-          <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'20px 22px'}}>
-            <BarChart data={analytics} metricKey="views" color={C2.red} label="Views diárias (28 dias)" />
-          </div>
-          <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'20px 22px'}}>
-            <BarChart data={analytics} metricKey="subscribersGained" color={C2.green} label="Inscritos ganhos (28 dias)" />
-          </div>
-          <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'20px 22px'}}>
-            <BarChart data={analytics} metricKey="watchMinutes" color={C2.violet} label="Minutos assistidos (28 dias)" />
-          </div>
-          <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'20px 22px'}}>
-            <div style={{fontFamily:F2.mono,fontSize:'9px',color:C2.t3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'16px'}}>Resumo do Período</div>
-            {[
-              { label:'Total de Views', value: fmt(analytics.reduce((a:number,d:any)=>a+(d.views||0),0)), color:C2.red },
-              { label:'Novos Inscritos', value: fmt(analytics.reduce((a:number,d:any)=>a+(d.subscribersGained||0),0)), color:C2.green },
-              { label:'Horas Assistidas', value: fmt(Math.round(analytics.reduce((a:number,d:any)=>a+(d.watchMinutes||0),0)/60))+'h', color:C2.violet },
-            ].map((s,i) => (
-              <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:i<2?`1px solid ${C2.line}`:'none'}}>
-                <span style={{fontFamily:F2.body,fontSize:'13px',color:C2.t2}}>{s.label}</span>
-                <span style={{fontFamily:F2.head,fontSize:'16px',fontWeight:700,color:s.color}}>{s.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tab === 'overview' && analytics.length === 0 && (
-        <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'40px',textAlign:'center',color:C2.t3,fontFamily:F2.body,fontSize:'13px'}}>
-          Dados de analytics não disponíveis · Ative a YouTube Analytics API no Google Cloud Console
-        </div>
-      )}
-
-      {/* Recent Videos */}
-      {tab === 'videos' && (
-        <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
-          {(ytVideos || []).length === 0 && (
-            <div style={{textAlign:'center',color:C2.t3,padding:'40px',fontFamily:F2.body,fontSize:'13px'}}>Nenhum vídeo encontrado</div>
-          )}
-          {(ytVideos || []).map((v: any) => (
-            <div key={v.id} style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'12px',padding:'16px',display:'flex',alignItems:'center',gap:'16px'}}>
-              {v.thumbnail && <img src={v.thumbnail} alt="" style={{width:'120px',height:'68px',borderRadius:'8px',objectFit:'cover',flexShrink:0}}/>}
-              <div style={{flex:1,overflow:'hidden'}}>
-                <div style={{fontFamily:F2.head,fontSize:'13px',fontWeight:600,color:C2.t1,marginBottom:'4px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.02em'}}>{v.title}</div>
-                <div style={{fontFamily:F2.mono,fontSize:'9px',color:C2.t3,letterSpacing:'0.04em'}}>{new Date(v.publishedAt).toLocaleDateString('pt-BR')}</div>
-              </div>
-              <div style={{display:'flex',gap:'20px',flexShrink:0}}>
-                {[
-                  { icon:'👁️', value:fmt(v.views), label:'views' },
-                  { icon:'❤️', value:fmt(v.likes), label:'likes' },
-                  { icon:'💬', value:fmt(v.comments), label:'comentários' },
-                ].map((s,i) => (
-                  <div key={i} style={{textAlign:'center'}}>
-                    <div style={{fontFamily:F2.head,fontSize:'15px',fontWeight:700,color:C2.t1}}>{s.value}</div>
-                    <div style={{fontFamily:F2.mono,fontSize:'8px',color:C2.t3,letterSpacing:'0.04em'}}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-              <a href={`https://youtube.com/watch?v=${v.id}`} target="_blank" rel="noopener noreferrer"
-                style={{background:'transparent',border:`1px solid ${C2.line}`,color:C2.t3,padding:'6px 12px',borderRadius:'7px',fontSize:'11px',cursor:'pointer',fontFamily:F2.body,textDecoration:'none',flexShrink:0}}>
-                Abrir →
-              </a>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Analytics detail */}
-      {tab === 'analytics' && (
-        <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'20px 22px'}}>
-          <BarChart data={analytics} metricKey="views" color={C2.red} label="Views por dia (últimos 28 dias)" />
-          <div style={{marginTop:'20px',overflowX:'auto'}}>
-            <table style={{width:'100%',borderCollapse:'collapse',fontFamily:F2.mono,fontSize:'11px'}}>
-              <thead>
-                <tr style={{borderBottom:`1px solid ${C2.line}`}}>
-                  {['Data','Views','Inscritos','Min. Assistidos'].map(h=>(
-                    <th key={h} style={{padding:'8px 10px',color:C2.t3,textAlign:'right',fontWeight:500,letterSpacing:'0.04em',textTransform:'uppercase',fontSize:'9px'}}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[...analytics].reverse().slice(0,14).map((d:any,i:number)=>(
-                  <tr key={i} style={{borderBottom:`1px solid ${C2.line}`}}>
-                    <td style={{padding:'8px 10px',color:C2.t2,textAlign:'right'}}>{d.date}</td>
-                    <td style={{padding:'8px 10px',color:C2.t1,textAlign:'right',fontWeight:600}}>{fmt(d.views)}</td>
-                    <td style={{padding:'8px 10px',color:C2.green,textAlign:'right',fontWeight:600}}>{d.subscribersGained > 0 ? '+'+d.subscribersGained : d.subscribersGained}</td>
-                    <td style={{padding:'8px 10px',color:C2.t2,textAlign:'right'}}>{fmt(d.watchMinutes)}min</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
   )
 }
 
