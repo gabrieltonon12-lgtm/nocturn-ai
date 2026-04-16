@@ -193,7 +193,6 @@ export default function Home() {
         @keyframes ticker { 0%{transform:translateX(0)}100%{transform:translateX(-50%)} }
       `}</style>
 
-      <CountdownBanner />
       <LiveNotification />
       <StickyCtaBar />
 

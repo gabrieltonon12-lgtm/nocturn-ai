@@ -2,12 +2,29 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
 import { getUsers, saveUsers, saveVideo, generateId, ensureAdmin } from '../../../lib/db'
 
-// OpenAI TTS voices (mapeadas das opcoes do dashboard)
+// OpenAI TTS voices
 const OPENAI_VOICES: Record<string,string> = {
-  masculine: 'onyx',    // grave, masculina — ideal dark channel
-  feminine:  'nova',    // feminina, clara
-  neutral:   'echo',    // neutra
-  asmr:      'fable',   // dramatica, suave
+  masculine: 'onyx',
+  feminine:  'nova',
+  neutral:   'echo',
+  asmr:      'fable',
+}
+
+// Tom de voz por tipo de conteúdo
+const CONTENT_TONE: Record<string,string> = {
+  faceless:      'narrador grave e misterioso, tom de documentário sombrio',
+  educational:   'narrador educativo e claro, tom de documentário informativo',
+  inspirational: 'narrador motivacional e empolgante, tom positivo e encorajador',
+  religious:     'narrador reverente e acolhedor, tom espiritual e reflexivo',
+  news:          'narrador jornalístico e direto, tom informativo e objetivo',
+  mystery:       'narrador intrigante e suspense, tom de investigação',
+  truecrime:     'narrador sério e investigativo, tom de true crime',
+  finance:       'narrador confiante e direto, tom de educação financeira',
+  nature:        'narrador contemplativo e encantado, tom de documentário natural',
+  sports:        'narrador empolgante e dinâmico, tom esportivo',
+  food:          'narrador caloroso e apaixonado, tom gastronômico',
+  horror:        'narrador tenso e assustador, tom de terror psicológico',
+  asmr:          'narrador suave e sussurrado, tom relaxante',
 }
 
 // Busca imagens no Pexels para cada cena
@@ -16,7 +33,7 @@ async function fetchPexelsImages(queries: string[], pexelsKey: string): Promise<
   for (const query of queries.slice(0, 5)) {
     try {
       const r = await fetch(
-        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + ' dark mysterious')}&per_page=1&orientation=landscape`,
+        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
         { headers: { Authorization: pexelsKey } }
       )
       if (r.ok) {
@@ -97,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ── STEP 1: GPT-4o gera roteiro estruturado em cenas ──────────────────
     if (openaiKey) {
       const dMap: Record<string,string> = { short: '4 cenas curtas de 10-15s', medium: '6 cenas de 20-30s', long: '8 cenas de 30-45s' }
-      const vMap: Record<string,string> = { masculine: 'narrador grave misterioso', feminine: 'narradora feminina misteriosa', neutral: 'narrador neutro', asmr: 'voz sussurrada intensa' }
+      const tone = CONTENT_TONE[contentType] || 'narrador envolvente, tom de documentário'
 
       try {
         const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -108,24 +125,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             max_tokens: 2500,
             messages: [{
               role: 'system',
-              content: `Você é roteirista especialista em dark channels virais no YouTube.
+              content: `Você é roteirista profissional especialista em vídeos virais no YouTube.
 REGRA ABSOLUTA: O roteiro DEVE ser EXATAMENTE sobre o tema informado pelo usuário. Nunca desvie do assunto.
-Escreva em português brasileiro fluido, como narração de documentário.
-Estrutura: ${dMap[duration]}. Estilo: ${contentType}. Tom: ${vMap[voice]}.
+Escreva em português brasileiro fluido e natural.
+Estrutura: ${dMap[duration] || '6 cenas de 20-30s'}. Tom: ${tone}.
 
 IMPORTANTE:
 - O campo "scenes" contém EXATAMENTE o texto que será narrado em cada cena (palavra por palavra como sairá do TTS)
-- Cada cena: 25-40 palavras, frases completas, sem marcações como [pausa] ou [música]
+- Cada cena: 25-40 palavras, frases completas, sem marcações como [pausa] ou [música] ou [efeito]
 - A narração deve ser contínua — cada scene.text é um trecho sequencial do roteiro
-- imageQuery em inglês para buscar imagem no Pexels que represente visualmente aquela cena
+- imageQuery em inglês para buscar imagem no Pexels que represente visualmente aquela cena (seja específico e relevante ao tema)
+- Use imagens realistas e relevantes ao tema — se for sobre Deus/religião use igrejas, céu, luz, fé; se for natureza use paisagens; etc.
 
 RETORNE APENAS JSON válido, sem markdown:
 {
-  "title": "título clickbait máximo 70 chars sobre o tema exato",
+  "title": "título atrativo máximo 70 chars sobre o tema exato",
   "description": "descrição para publicação máximo 250 chars com call to action",
   "tags": ["tag1","tag2","tag3","tag4","tag5"],
   "scenes": [
-    {"text": "texto exato narrado nesta cena sem pontuação de palco", "imageQuery": "english search term for dark pexels image"},
+    {"text": "texto exato narrado nesta cena sem pontuação de palco", "imageQuery": "specific relevant english search term for pexels"},
     {"text": "continuação natural do trecho anterior...", "imageQuery": "..."}
   ]
 }`,

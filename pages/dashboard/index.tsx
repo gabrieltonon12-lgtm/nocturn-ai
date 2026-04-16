@@ -9,14 +9,14 @@ const PLAN_URLS: Record<string,string> = {
 }
 
 const QUICK_PROMPTS = [
-  { icon:'👁️', label:'Illuminati', text:'Um documentário revelador sobre o Illuminati e como eles controlam o sistema financeiro mundial desde 1776' },
+  { icon:'✝️', label:'Fé & Deus', text:'Um vídeo inspirador sobre a presença de Deus na vida das pessoas e como a fé transforma vidas' },
   { icon:'💀', label:'True Crime', text:'O caso real mais perturbador do true crime brasileiro que a mídia tentou esconder' },
-  { icon:'👽', label:'Área 51', text:'Evidências reais de que a Área 51 esconde tecnologia extraterrestre — documentos desclassificados revelam tudo' },
-  { icon:'💰', label:'Finanças', text:'A verdade sombria sobre como os bancos centrais controlam cada governo do mundo sem que ninguém saiba' },
-  { icon:'🌍', label:'Conspirações', text:'As 5 maiores conspirações que se tornaram realidade comprovada e que o mainstream ignorou por anos' },
-  { icon:'🧠', label:'MKUltra', text:'O projeto MKUltra e os experimentos secretos de controle mental da CIA que duram até hoje' },
-  { icon:'🔴', label:'Soc. Secretas', text:'As sociedades secretas mais poderosas do mundo e seus rituais que influenciam presidentes e reis' },
-  { icon:'📡', label:'HAARP', text:'O projeto HAARP e a verdade sobre o controle do clima como arma geopolítica' },
+  { icon:'🌿', label:'Natureza', text:'Os lugares mais belos e inexplorados do planeta Terra que poucos seres humanos já viram' },
+  { icon:'💰', label:'Dinheiro', text:'Como pessoas comuns ficaram ricas do zero usando estratégias que os ricos não querem que você saiba' },
+  { icon:'🏆', label:'Esportes', text:'A história real por trás do maior feito esportivo do Brasil que emocionou o mundo inteiro' },
+  { icon:'🧠', label:'Ciência', text:'As descobertas científicas mais surpreendentes dos últimos anos que vão mudar sua visão de mundo' },
+  { icon:'👽', label:'Mistério', text:'Os maiores mistérios não resolvidos da história que cientistas e governos ainda não conseguem explicar' },
+  { icon:'🍕', label:'Gastronomia', text:'Os segredos das receitas mais famosas do mundo e a história por trás de cada prato icônico' },
 ]
 
 const PLAN_CREDITS: Record<string,number> = { starter:20, pro:100, enterprise:99999 }
@@ -98,12 +98,28 @@ export default function Dashboard() {
     const u = localStorage.getItem('user')
     const t = localStorage.getItem('token')
     if (!u || !t) { router.push('/login'); return }
-    setUser(JSON.parse(u))
+    const parsed = JSON.parse(u)
+    setUser(parsed)
     const token = t
     fetch('/api/videos', { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json()).then(d => setVideos(d.videos || []))
     fetch('/api/rewards', { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json()).then(d => setRewards(d.rewards || []))
+    // Handle YouTube OAuth callback
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('view') === 'canal' || params.get('youtube_connected')) {
+      setView('canal')
+      // Refresh user data from server
+      fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.user) { localStorage.setItem('user', JSON.stringify(d.user)); setUser(d.user) } })
+        .catch(() => {})
+      window.history.replaceState({}, '', '/dashboard')
+    }
+    if (params.get('youtube_error')) {
+      alert('Erro ao conectar YouTube: ' + params.get('youtube_error'))
+      window.history.replaceState({}, '', '/dashboard')
+    }
   }, [])
 
   useEffect(() => {
@@ -225,6 +241,7 @@ export default function Dashboard() {
   const NAV_ITEMS = [
     { id:'generator', icon:'◈', label:'Gerar Vídeo', badge:'IA', badgeColor: C.green, badgeBg: C.gDim },
     { id:'videos', icon:'▤', label:'Biblioteca', badge: videos.length > 0 ? String(videos.length) : undefined },
+    { id:'canal', icon:'▶', label:'Canal YouTube', badge: user.youtube?.channelId ? '●' : undefined, badgeColor: user.youtube?.channelId ? C.red : C.t3 },
     { id:'rewards', icon:'◆', label:'Rewards', badge: eligibleRewards.length > 0 ? String(eligibleRewards.length) : undefined, badgeColor: C.red, badgeBg: C.redDim, badgeRed: true },
     { id:'billing', icon:'◎', label:'Assinatura' },
   ]
@@ -393,7 +410,7 @@ export default function Dashboard() {
           <div style={{padding:'0 32px',height:'56px',borderBottom:`1px solid ${C.line}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:`rgba(5,8,15,.92)`,position:'sticky',top:0,zIndex:10,backdropFilter:'blur(12px)',flexShrink:0}}>
             <div style={{display:'flex',alignItems:'center',gap:'16px'}}>
               <div style={{fontFamily:F.head,fontSize:'16px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1}}>
-                {view==='generator'?'Gerar Vídeo':view==='videos'?'Biblioteca':view==='rewards'?'Rewards':'Assinatura'}
+                {view==='generator'?'Gerar Vídeo':view==='videos'?'Biblioteca':view==='canal'?'Canal YouTube':view==='rewards'?'Rewards':'Assinatura'}
               </div>
               {view === 'generator' && (
                 <span style={{fontFamily:F.mono,fontSize:'9px',background:C.gDim,border:'1px solid rgba(5,150,105,.2)',color:C.green,padding:'3px 8px',borderRadius:'9px',fontWeight:500,letterSpacing:'0.04em'}}>GPT-4o · OpenAI TTS · Pexels</span>
@@ -489,11 +506,18 @@ export default function Dashboard() {
                       <label style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Tipo de Conteúdo</label>
                       <select value={contentType} onChange={e=>setContentType(e.target.value)} style={selStyle}>
                         <option value="faceless">Faceless / Dark Channel</option>
+                        <option value="educational">Educativo / Documentário</option>
+                        <option value="inspirational">Inspiracional / Motivacional</option>
+                        <option value="religious">Religioso / Espiritual</option>
+                        <option value="news">Notícias / Atualidades</option>
                         <option value="mystery">Mistério e Conspirações</option>
-                        <option value="horror">Terror e Creepypasta</option>
-                        <option value="crypto">Crypto e Finanças</option>
-                        <option value="asmr">ASMR Dark</option>
                         <option value="truecrime">True Crime</option>
+                        <option value="finance">Finanças / Dinheiro</option>
+                        <option value="nature">Natureza / Viagem</option>
+                        <option value="sports">Esportes / Entretenimento</option>
+                        <option value="food">Gastronomia / Culinária</option>
+                        <option value="horror">Terror e Creepypasta</option>
+                        <option value="asmr">ASMR / Relaxamento</option>
                       </select>
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
@@ -830,12 +854,270 @@ export default function Dashboard() {
               </div>
             )}
 
+            {/* ── CANAL YOUTUBE ─────────────────────────────────── */}
+            {view === 'canal' && (
+              <ChannelStudioView user={user} />
+            )}
+
           </div>
         </div>
       </div>
 
       {selectedVideo && <VideoPlayerModal video={selectedVideo} onClose={() => setSelectedVideo(null)}/>}
     </>
+  )
+}
+
+// ── CHANNEL STUDIO ───────────────────────────────────────────────────────────
+function ChannelStudioView({ user }: { user: any }) {
+  const [metrics, setMetrics] = React.useState<any>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [tab, setTab] = React.useState<'overview'|'videos'|'analytics'>('overview')
+
+  const C2 = { bg:'#02040A', card:'#080D1A', raised:'#0C1222', line:'#192436', lineHi:'#203050', red:'#C5183A', green:'#059669', violet:'#7C3AED', amber:'#D97706', t1:'#ECF2FA', t2:'#6E8099', t3:'#364A62' }
+  const F2 = { body:"'Inter',system-ui,sans-serif", head:"'Space Grotesk',system-ui,sans-serif", mono:"'JetBrains Mono',monospace" }
+
+  React.useEffect(() => {
+    const token = localStorage.getItem('token') || ''
+    fetch('/api/youtube/metrics', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => { setMetrics(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const connectYouTube = () => {
+    const token = localStorage.getItem('token') || ''
+    window.location.href = `/api/youtube/connect?token=${encodeURIComponent(token)}`
+  }
+
+  const disconnectYouTube = () => {
+    if (!confirm('Desconectar o canal do YouTube?')) return
+    const token = localStorage.getItem('token') || ''
+    fetch('/api/youtube/disconnect', { method: 'POST', headers: { Authorization: 'Bearer ' + token } })
+      .then(() => { setMetrics({ connected: false }); const u = JSON.parse(localStorage.getItem('user')||'{}'); delete u.youtube; localStorage.setItem('user', JSON.stringify(u)) })
+  }
+
+  const fmt = (n: number) => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n)
+
+  // Simple SVG bar chart
+  const BarChart = ({ data, metricKey, color, label }: { data: any[], metricKey: string, color: string, label: string }) => {
+    if (!data || data.length === 0) return <div style={{color:C2.t3,fontSize:'12px',textAlign:'center',padding:'20px'}}>Sem dados disponíveis</div>
+    const max = Math.max(...data.map((d: any) => d[metricKey] || 0), 1)
+    const W = 100, H = 60
+    return (
+      <div>
+        <div style={{fontFamily:F2.mono,fontSize:'9px',color:C2.t3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'8px'}}>{label}</div>
+        <svg viewBox={`0 0 ${data.length * (W / data.length) * data.length} ${H + 20}`} style={{width:'100%',height:'80px'}}>
+          {data.map((d: any, i: number) => {
+            const bW = (W * data.length / data.length) - 2
+            const bH = ((d[metricKey] || 0) / max) * H
+            const x = i * (W * data.length / data.length)
+            return (
+              <g key={i}>
+                <rect x={x + 1} y={H - bH} width={Math.max(bW - 1, 1)} height={bH} fill={color} opacity="0.8" rx="2"/>
+                {i % 7 === 0 && <text x={x + bW/2} y={H + 14} textAnchor="middle" fill={C2.t3} fontSize="8" fontFamily="monospace">
+                  {d.date?.slice(5)}
+                </text>}
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+    )
+  }
+
+  if (loading) return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'300px',color:C2.t3,fontFamily:F2.body,gap:'10px'}}>
+      <div style={{width:'16px',height:'16px',borderRadius:'50%',border:`2px solid ${C2.lineHi}`,borderTopColor:C2.red,animation:'spin 0.8s linear infinite'}}/>
+      Carregando métricas...
+    </div>
+  )
+
+  if (!metrics?.connected) return (
+    <div style={{maxWidth:'540px',margin:'40px auto',textAlign:'center'}}>
+      <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'20px',padding:'48px 32px'}}>
+        <div style={{fontSize:'48px',marginBottom:'20px'}}>📺</div>
+        <div style={{fontFamily:F2.head,fontSize:'22px',fontWeight:800,color:C2.t1,marginBottom:'10px',letterSpacing:'-0.03em'}}>Conecte seu Canal do YouTube</div>
+        <div style={{fontFamily:F2.body,fontSize:'14px',color:C2.t2,lineHeight:1.7,marginBottom:'32px'}}>
+          Veja em tempo real as métricas do seu canal, performance dos vídeos, crescimento de inscritos, visualizações e muito mais — direto aqui no dashboard.
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'32px',textAlign:'left'}}>
+          {[
+            { icon:'👥', label:'Inscritos em tempo real' },
+            { icon:'👁️', label:'Views e impressões' },
+            { icon:'📊', label:'Gráfico de crescimento 28 dias' },
+            { icon:'🎬', label:'Performance dos vídeos' },
+            { icon:'⏱️', label:'Tempo de exibição' },
+            { icon:'❤️', label:'Likes e comentários' },
+          ].map((f, i) => (
+            <div key={i} style={{display:'flex',alignItems:'center',gap:'8px',background:C2.raised,borderRadius:'8px',padding:'10px 12px',border:`1px solid ${C2.line}`}}>
+              <span style={{fontSize:'16px'}}>{f.icon}</span>
+              <span style={{fontFamily:F2.body,fontSize:'12px',color:C2.t2}}>{f.label}</span>
+            </div>
+          ))}
+        </div>
+        {!process.env.NEXT_PUBLIC_GOOGLE_CONFIGURED && (
+          <div style={{background:'rgba(217,119,6,.08)',border:'1px solid rgba(217,119,6,.2)',borderRadius:'10px',padding:'12px 16px',marginBottom:'20px',textAlign:'left'}}>
+            <div style={{fontFamily:F2.mono,fontSize:'9px',color:'#D97706',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:'4px'}}>Config necessária</div>
+            <div style={{fontFamily:F2.body,fontSize:'12px',color:C2.t2,lineHeight:1.6}}>
+              Para ativar esta função, o administrador precisa configurar <code style={{color:'#D97706'}}>GOOGLE_CLIENT_ID</code> e <code style={{color:'#D97706'}}>GOOGLE_CLIENT_SECRET</code> nas variáveis de ambiente do Vercel.
+            </div>
+          </div>
+        )}
+        <button onClick={connectYouTube}
+          style={{background:'linear-gradient(135deg,#C5183A,#8B0A22)',border:'none',color:'#fff',padding:'14px 32px',borderRadius:'10px',fontFamily:F2.head,fontSize:'14px',fontWeight:700,cursor:'pointer',width:'100%',letterSpacing:'-0.02em'}}>
+          Conectar YouTube →
+        </button>
+        <div style={{fontFamily:F2.body,fontSize:'11px',color:C2.t3,marginTop:'12px'}}>Acesso somente leitura · Não publicamos nada no seu canal</div>
+      </div>
+    </div>
+  )
+
+  const { channel, videos: ytVideos, analytics } = metrics
+
+  const tabStyle = (t: string) => ({
+    background: tab === t ? C2.red : 'transparent',
+    color: tab === t ? '#fff' : C2.t3,
+    border: 'none', borderRadius: '7px', padding: '6px 14px',
+    fontSize: '11px', fontWeight: tab === t ? 700 : 400,
+    cursor: 'pointer', fontFamily: F2.body, transition: 'all .15s',
+  })
+
+  return (
+    <div style={{maxWidth:'1040px'}}>
+      {/* Channel header */}
+      <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'16px',padding:'24px 28px',marginBottom:'20px',display:'flex',alignItems:'center',gap:'20px'}}>
+        {channel.thumbnail
+          ? <img src={channel.thumbnail} alt="" style={{width:'64px',height:'64px',borderRadius:'50%',objectFit:'cover',flexShrink:0,border:`2px solid ${C2.red}`}}/>
+          : <div style={{width:'64px',height:'64px',borderRadius:'50%',background:`linear-gradient(135deg,${C2.red},${C2.violet})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px',flexShrink:0}}>📺</div>
+        }
+        <div style={{flex:1}}>
+          <div style={{fontFamily:F2.head,fontSize:'18px',fontWeight:800,color:C2.t1,letterSpacing:'-0.03em',marginBottom:'4px'}}>{channel.title}</div>
+          <div style={{fontFamily:F2.mono,fontSize:'10px',color:C2.t3,letterSpacing:'0.04em'}}>{channel.customUrl || channel.id}</div>
+        </div>
+        <div style={{display:'flex',gap:'24px',textAlign:'center'}}>
+          {[
+            { label:'Inscritos', value:fmt(channel.subscribers) },
+            { label:'Visualizações', value:fmt(channel.totalViews) },
+            { label:'Vídeos', value:fmt(channel.videoCount) },
+          ].map((s,i) => (
+            <div key={i}>
+              <div style={{fontFamily:F2.head,fontSize:'22px',fontWeight:800,color:C2.t1,letterSpacing:'-0.04em'}}>{s.value}</div>
+              <div style={{fontFamily:F2.mono,fontSize:'8px',color:C2.t3,textTransform:'uppercase',letterSpacing:'0.08em',marginTop:'2px'}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <button onClick={disconnectYouTube}
+          style={{background:'transparent',border:`1px solid ${C2.line}`,color:C2.t3,padding:'6px 12px',borderRadius:'7px',fontSize:'11px',cursor:'pointer',fontFamily:F2.body}}>
+          Desconectar
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:'flex',gap:'4px',background:C2.raised,borderRadius:'10px',padding:'4px',border:`1px solid ${C2.line}`,marginBottom:'20px',width:'fit-content'}}>
+        {(['overview','videos','analytics'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)} style={tabStyle(t)}>
+            {t === 'overview' ? 'Visão Geral' : t === 'videos' ? 'Vídeos Recentes' : 'Analytics 28d'}
+          </button>
+        ))}
+      </div>
+
+      {/* Overview */}
+      {tab === 'overview' && analytics.length > 0 && (
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px'}}>
+          <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'20px 22px'}}>
+            <BarChart data={analytics} metricKey="views" color={C2.red} label="Views diárias (28 dias)" />
+          </div>
+          <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'20px 22px'}}>
+            <BarChart data={analytics} metricKey="subscribersGained" color={C2.green} label="Inscritos ganhos (28 dias)" />
+          </div>
+          <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'20px 22px'}}>
+            <BarChart data={analytics} metricKey="watchMinutes" color={C2.violet} label="Minutos assistidos (28 dias)" />
+          </div>
+          <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'20px 22px'}}>
+            <div style={{fontFamily:F2.mono,fontSize:'9px',color:C2.t3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'16px'}}>Resumo do Período</div>
+            {[
+              { label:'Total de Views', value: fmt(analytics.reduce((a:number,d:any)=>a+(d.views||0),0)), color:C2.red },
+              { label:'Novos Inscritos', value: fmt(analytics.reduce((a:number,d:any)=>a+(d.subscribersGained||0),0)), color:C2.green },
+              { label:'Horas Assistidas', value: fmt(Math.round(analytics.reduce((a:number,d:any)=>a+(d.watchMinutes||0),0)/60))+'h', color:C2.violet },
+            ].map((s,i) => (
+              <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:i<2?`1px solid ${C2.line}`:'none'}}>
+                <span style={{fontFamily:F2.body,fontSize:'13px',color:C2.t2}}>{s.label}</span>
+                <span style={{fontFamily:F2.head,fontSize:'16px',fontWeight:700,color:s.color}}>{s.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === 'overview' && analytics.length === 0 && (
+        <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'40px',textAlign:'center',color:C2.t3,fontFamily:F2.body,fontSize:'13px'}}>
+          Dados de analytics não disponíveis · Ative a YouTube Analytics API no Google Cloud Console
+        </div>
+      )}
+
+      {/* Recent Videos */}
+      {tab === 'videos' && (
+        <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+          {(ytVideos || []).length === 0 && (
+            <div style={{textAlign:'center',color:C2.t3,padding:'40px',fontFamily:F2.body,fontSize:'13px'}}>Nenhum vídeo encontrado</div>
+          )}
+          {(ytVideos || []).map((v: any) => (
+            <div key={v.id} style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'12px',padding:'16px',display:'flex',alignItems:'center',gap:'16px'}}>
+              {v.thumbnail && <img src={v.thumbnail} alt="" style={{width:'120px',height:'68px',borderRadius:'8px',objectFit:'cover',flexShrink:0}}/>}
+              <div style={{flex:1,overflow:'hidden'}}>
+                <div style={{fontFamily:F2.head,fontSize:'13px',fontWeight:600,color:C2.t1,marginBottom:'4px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.02em'}}>{v.title}</div>
+                <div style={{fontFamily:F2.mono,fontSize:'9px',color:C2.t3,letterSpacing:'0.04em'}}>{new Date(v.publishedAt).toLocaleDateString('pt-BR')}</div>
+              </div>
+              <div style={{display:'flex',gap:'20px',flexShrink:0}}>
+                {[
+                  { icon:'👁️', value:fmt(v.views), label:'views' },
+                  { icon:'❤️', value:fmt(v.likes), label:'likes' },
+                  { icon:'💬', value:fmt(v.comments), label:'comentários' },
+                ].map((s,i) => (
+                  <div key={i} style={{textAlign:'center'}}>
+                    <div style={{fontFamily:F2.head,fontSize:'15px',fontWeight:700,color:C2.t1}}>{s.value}</div>
+                    <div style={{fontFamily:F2.mono,fontSize:'8px',color:C2.t3,letterSpacing:'0.04em'}}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              <a href={`https://youtube.com/watch?v=${v.id}`} target="_blank" rel="noopener noreferrer"
+                style={{background:'transparent',border:`1px solid ${C2.line}`,color:C2.t3,padding:'6px 12px',borderRadius:'7px',fontSize:'11px',cursor:'pointer',fontFamily:F2.body,textDecoration:'none',flexShrink:0}}>
+                Abrir →
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Analytics detail */}
+      {tab === 'analytics' && (
+        <div style={{background:C2.card,border:`1px solid ${C2.line}`,borderRadius:'14px',padding:'20px 22px'}}>
+          <BarChart data={analytics} metricKey="views" color={C2.red} label="Views por dia (últimos 28 dias)" />
+          <div style={{marginTop:'20px',overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontFamily:F2.mono,fontSize:'11px'}}>
+              <thead>
+                <tr style={{borderBottom:`1px solid ${C2.line}`}}>
+                  {['Data','Views','Inscritos','Min. Assistidos'].map(h=>(
+                    <th key={h} style={{padding:'8px 10px',color:C2.t3,textAlign:'right',fontWeight:500,letterSpacing:'0.04em',textTransform:'uppercase',fontSize:'9px'}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...analytics].reverse().slice(0,14).map((d:any,i:number)=>(
+                  <tr key={i} style={{borderBottom:`1px solid ${C2.line}`}}>
+                    <td style={{padding:'8px 10px',color:C2.t2,textAlign:'right'}}>{d.date}</td>
+                    <td style={{padding:'8px 10px',color:C2.t1,textAlign:'right',fontWeight:600}}>{fmt(d.views)}</td>
+                    <td style={{padding:'8px 10px',color:C2.green,textAlign:'right',fontWeight:600}}>{d.subscribersGained > 0 ? '+'+d.subscribersGained : d.subscribersGained}</td>
+                    <td style={{padding:'8px 10px',color:C2.t2,textAlign:'right'}}>{fmt(d.watchMinutes)}min</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -968,39 +1250,50 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     setAudioReady(true)
   }, [computeSceneTiming])
 
-  // ── Draw subtitles: karaoke word-by-word highlighting ──────────────────────
-  const drawSubtitles = (ctx: CanvasRenderingContext2D, text: string, wordProgress: number, W: number, H: number) => {
-    if (!text.trim()) return
+  // ── All words flat list (for global subtitle tracking) ──────────────────────
+  const allWords = React.useMemo(() =>
+    scenes.flatMap((s: any) => (s.text || '').split(/\s+/).filter(Boolean)),
+  [scenes])
+
+  // ── Draw subtitles: global karaoke window (12 words visible, current highlighted)
+  const drawSubtitles = (ctx: CanvasRenderingContext2D, currentWordIdx: number, W: number, H: number) => {
+    if (allWords.length === 0) return
     ctx.save()
-    ctx.font = 'bold 25px Arial, sans-serif'
+    ctx.font = 'bold 26px Arial, sans-serif'
     ctx.textBaseline = 'alphabetic'
 
-    const words = text.split(/\s+/).filter(Boolean)
-    const maxLineW = W - 100
-    type LineData = { words: string[], width: number }
-    const lines: LineData[] = []
-    let line: string[] = [], lineW = 0
+    // Show a window of up to 12 words, centered ~3 words before current
+    const WINDOW = 12
+    const winStart = Math.max(0, currentWordIdx - 3)
+    const winEnd = Math.min(allWords.length, winStart + WINDOW)
+    const windowWords = allWords.slice(winStart, winEnd)
+    const localIdx = currentWordIdx - winStart // index within window
 
-    for (const word of words) {
+    const maxLineW = W - 100
+    type LineData = { words: string[], startIdx: number }
+    const lines: LineData[] = []
+    let line: string[] = [], lineW = 0, lineStartIdx = 0
+
+    windowWords.forEach((word: string, i: number) => {
       const ww = ctx.measureText(word + ' ').width
       if (lineW + ww > maxLineW && line.length > 0) {
-        lines.push({ words: [...line], width: lineW })
-        line = [word]; lineW = ww
+        lines.push({ words: [...line], startIdx: lineStartIdx })
+        lineStartIdx = i; line = [word]; lineW = ww
       } else {
+        if (line.length === 0) lineStartIdx = i
         line.push(word); lineW += ww
       }
-    }
-    if (line.length > 0) lines.push({ words: line, width: lineW })
+    })
+    if (line.length > 0) lines.push({ words: line, startIdx: lineStartIdx })
 
-    const lineH = 36
-    const totalH = lines.length * lineH + 24
-    const baseY = H - 18
+    const lineH = 38
+    const totalH = lines.length * lineH + 20
+    const baseY = H - 16
 
-    // Background
-    ctx.fillStyle = 'rgba(0,0,0,0.62)'
+    // Background pill
+    ctx.fillStyle = 'rgba(0,0,0,0.68)'
     ctx.beginPath()
-    const bgX = 30, bgY = baseY - totalH - 2, bgW = W - 60, bgHH = totalH + 4
-    const r = 8
+    const bgX = 24, bgY = baseY - totalH - 2, bgW = W - 48, bgHH = totalH + 4, r = 10
     ctx.moveTo(bgX + r, bgY); ctx.lineTo(bgX + bgW - r, bgY)
     ctx.arcTo(bgX + bgW, bgY, bgX + bgW, bgY + r, r)
     ctx.lineTo(bgX + bgW, bgY + bgHH - r)
@@ -1009,26 +1302,24 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     ctx.arcTo(bgX, bgY + bgHH, bgX, bgY + bgHH - r, r)
     ctx.lineTo(bgX, bgY + r)
     ctx.arcTo(bgX, bgY, bgX + r, bgY, r)
-    ctx.closePath()
-    ctx.fill()
+    ctx.closePath(); ctx.fill()
 
-    // Draw words with highlighting
     let gi = 0
     lines.forEach((ln, li) => {
+      const lineWidth = ln.words.reduce((acc: number, w: string) => acc + ctx.measureText(w + ' ').width, 0)
       const y = baseY - (lines.length - 1 - li) * lineH - 6
-      let x = (W - ln.width) / 2
+      let x = (W - lineWidth) / 2
       ln.words.forEach((word: string) => {
-        const active = gi < wordProgress
-        const current = gi === Math.floor(wordProgress)
-        if (current) {
-          ctx.shadowColor = 'rgba(255,229,92,0.6)'; ctx.shadowBlur = 14
-          ctx.fillStyle = '#FFE55C'
-        } else if (active) {
-          ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 8
-          ctx.fillStyle = '#FFFFFF'
+        const wIdx = ln.startIdx + gi - (gi - ln.words.indexOf(word))
+        const absIdx = ln.startIdx + ln.words.indexOf(word)
+        const isCurrent = absIdx === localIdx
+        const isSpoken = absIdx < localIdx
+        if (isCurrent) {
+          ctx.shadowColor = 'rgba(255,229,92,0.7)'; ctx.shadowBlur = 16; ctx.fillStyle = '#FFE55C'
+        } else if (isSpoken) {
+          ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 6; ctx.fillStyle = '#FFFFFF'
         } else {
-          ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 6
-          ctx.fillStyle = 'rgba(255,255,255,0.38)'
+          ctx.shadowColor = 'none'; ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,0.35)'
         }
         ctx.fillText(word, x, y)
         x += ctx.measureText(word + ' ').width
@@ -1039,7 +1330,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   }
 
   // ── Draw canvas frame ──────────────────────────────────────────────────────
-  const drawFrame = React.useCallback((ctx: CanvasRenderingContext2D, sceneIdx: number, pct: number) => {
+  const drawFrame = React.useCallback((ctx: CanvasRenderingContext2D, sceneIdx: number, pct: number, globalT?: number) => {
     const W = 1280, H = 720
     ctx.clearRect(0, 0, W, H)
     const imgs = loadedImgsRef.current
@@ -1048,7 +1339,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     if (img) {
       const scale = 1 + pct * 0.035
       ctx.save()
-      ctx.filter = 'brightness(0.38) saturate(0.6)'
+      ctx.filter = 'brightness(0.4) saturate(0.65)'
       ctx.drawImage(img, (W - W*scale)/2, (H - H*scale)/2, W*scale, H*scale)
       ctx.restore()
     } else {
@@ -1057,16 +1348,23 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     }
 
-    // Dark vignette overlay
+    // Vignette overlay
     const ov = ctx.createLinearGradient(0, H*0.28, 0, H)
     ov.addColorStop(0, 'rgba(0,0,0,0)'); ov.addColorStop(0.6, 'rgba(0,0,0,0.55)'); ov.addColorStop(1, 'rgba(0,0,0,0.96)')
     ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H)
 
-    // Karaoke subtitles
-    const sceneData = scenes[sceneIdx]
-    const text = sceneData?.text || (video.script || '').substring(sceneIdx * 120, (sceneIdx + 1) * 120)
-    const wordCount = text.split(/\s+/).filter(Boolean).length
-    drawSubtitles(ctx, text, pct * wordCount, W, H)
+    // ── Global word tracking for subtitles ──────────────────────────────────
+    // Use audio currentTime mapped globally to all words (not per-scene pct)
+    // This ensures subtitles never drift even if TTS speed varies per word
+    const totalDurForSubs = audioDuration > 0 ? audioDuration : N * secPerScene
+    const effectiveT = globalT !== undefined ? globalT
+      : (sceneTimingRef.current[sceneIdx]
+        ? sceneTimingRef.current[sceneIdx].start + pct * (sceneTimingRef.current[sceneIdx].end - sceneTimingRef.current[sceneIdx].start)
+        : sceneIdx * secPerScene + pct * secPerScene)
+    const currentWordIdx = allWords.length > 0 && totalDurForSubs > 0
+      ? Math.min(Math.floor((effectiveT / totalDurForSubs) * allWords.length), allWords.length - 1)
+      : 0
+    drawSubtitles(ctx, currentWordIdx, W, H)
 
     // Watermark
     ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fillRect(14, 14, 154, 34)
@@ -1082,7 +1380,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     const prog = (sceneIdx + pct) / N
     ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(0, H - 5, W, 5)
     ctx.fillStyle = '#C5183A'; ctx.fillRect(0, H - 5, W * prog, 5)
-  }, [scenes, N, video.script])
+  }, [scenes, N, allWords, audioDuration, secPerScene, video.script])
 
   // ── Playback loop ──────────────────────────────────────────────────────────
   const cancelLoop = React.useCallback(() => {
@@ -1106,11 +1404,11 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
 
     const loop = () => {
       if (!isPlayingRef.current) return
-      let sceneIdx: number, pct: number
+      let sceneIdx: number, pct: number, t = 0
 
       if (audio && hasAudio && sceneTimingRef.current.length > 0) {
         // ── Audio-driven (primary mode) ──
-        const t = audio.currentTime
+        t = audio.currentTime
         setAudioCurrentTime(t)
 
         // Find which scene we're in
@@ -1123,7 +1421,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
         pct = sceneDur > 0 ? Math.min((t - timing.start) / sceneDur, 1) : 0
 
         if (audio.ended || t >= (audioDuration || N * secPerScene)) {
-          drawFrame(ctx, N - 1, 1)
+          drawFrame(ctx, N - 1, 1, audioDuration || N * secPerScene)
           isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
           return
         }
@@ -1131,11 +1429,12 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
         // ── Timer-driven fallback ──
         const elapsed = (performance.now() - timerStart) / 1000
         setAudioCurrentTime(elapsed)
+        t = elapsed
         sceneIdx = Math.min(Math.floor(elapsed / secPerScene), N - 1)
         pct = Math.min((elapsed % secPerScene) / secPerScene, 1)
 
         if (elapsed >= N * secPerScene) {
-          drawFrame(ctx, N - 1, 1)
+          drawFrame(ctx, N - 1, 1, N * secPerScene)
           isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
           if (audio) { audio.pause(); audio.currentTime = 0 }
           return
@@ -1143,7 +1442,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
       }
 
       setCurrentScene(sceneIdx)
-      drawFrame(ctx, sceneIdx, pct)
+      drawFrame(ctx, sceneIdx, pct, t)
       animRef.current = requestAnimationFrame(loop)
     }
 
@@ -1174,7 +1473,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
         }
         const timing = sceneTimingRef.current[sceneIdx]
         const scenePct = timing ? Math.min((t - timing.start) / (timing.end - timing.start), 1) : 0
-        drawFrame(canvasRef.current.getContext('2d')!, sceneIdx, scenePct)
+        drawFrame(canvasRef.current.getContext('2d')!, sceneIdx, scenePct, t)
       }
     }
   }, [audioDuration, N, secPerScene, hasAudio, imgsReady, drawFrame])
