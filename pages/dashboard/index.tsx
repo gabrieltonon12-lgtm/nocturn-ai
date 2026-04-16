@@ -92,6 +92,10 @@ export default function Dashboard() {
   const [claimingId, setClaimingId] = useState('')
   const [viewsInput, setViewsInput] = useState('')
   const [reportingVideoId, setReportingVideoId] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [scriptPreview, setScriptPreview] = useState<any>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [toast, setToast] = useState('')
   const logRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -126,9 +130,33 @@ export default function Dashboard() {
     'DONE   Video gerado com sucesso!',
   ]
 
-  const handleGenerate = async () => {
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
+
+  const copyText = (text: string, label = 'Copiado!') => {
+    navigator.clipboard.writeText(text).then(() => showToast(label))
+  }
+
+  const handlePreviewScript = async () => {
+    if (!prompt.trim()) return
+    setPreviewLoading(true); setScriptPreview(null)
+    const token = localStorage.getItem('token') || ''
+    try {
+      const res = await fetch('/api/generate/script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ prompt, contentType, duration, voice }),
+      })
+      const data = await res.json()
+      if (res.ok) setScriptPreview(data)
+      else showToast(data.error || 'Erro ao gerar roteiro')
+    } catch { showToast('Erro de conexão') }
+    setPreviewLoading(false)
+  }
+
+  const handleGenerate = async (preScript?: any) => {
     if (!prompt.trim()) return
     setGenerating(true); setProgress(0); setLogs([])
+    setScriptPreview(null)
     const token = localStorage.getItem('token') || ''
     let step = 0
     const iv = setInterval(() => {
@@ -141,7 +169,7 @@ export default function Dashboard() {
       const res = await fetch('/api/generate/video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ prompt, contentType, duration, voice, platforms })
+        body: JSON.stringify({ prompt, contentType, duration, voice, platforms, scriptData: preScript || undefined })
       })
       const data = await res.json()
       setTimeout(async () => {
@@ -261,9 +289,9 @@ export default function Dashboard() {
       `}</style>
 
       {/* Toast */}
-      {rewardToast && (
+      {(rewardToast || toast) && (
         <div style={{position:'fixed',top:'24px',right:'24px',zIndex:9999,background:C.card,border:`1px solid ${C.red}`,color:C.t1,padding:'12px 18px',borderRadius:'10px',fontWeight:600,fontSize:'13px',boxShadow:shadow.float,fontFamily:F.body,maxWidth:'300px',animation:'fadeUp .2s ease'}}>
-          {rewardToast}
+          {rewardToast || toast}
         </div>
       )}
 
@@ -596,8 +624,8 @@ export default function Dashboard() {
                   </div>
 
                   {/* CTA row */}
-                  <div style={{display:'flex',gap:'12px',alignItems:'center'}}>
-                    <button onClick={handleGenerate} disabled={generating || !prompt.trim()}
+                  <div style={{display:'flex',gap:'12px',alignItems:'center',flexWrap:'wrap'}}>
+                    <button onClick={() => handleGenerate(scriptPreview)} disabled={generating || !prompt.trim()}
                       className="btn-primary"
                       style={{
                         padding:'12px 28px',
@@ -610,8 +638,15 @@ export default function Dashboard() {
                         flexShrink:0,fontFamily:F.head,
                         letterSpacing:'-0.02em',
                       }}>
-                      {generating ? 'Gerando...' : 'Gerar Vídeo com IA →'}
+                      {generating ? 'Gerando...' : scriptPreview ? 'Gerar com este roteiro →' : 'Gerar Vídeo com IA →'}
                     </button>
+                    {!generating && (
+                      <button onClick={handlePreviewScript} disabled={previewLoading || !prompt.trim()}
+                        className="btn-ghost"
+                        style={{padding:'11px 18px',background:'transparent',border:`1px solid ${C.lineHi}`,color:C.t2,borderRadius:'10px',fontSize:'12px',fontWeight:600,cursor: previewLoading || !prompt.trim() ? 'not-allowed' : 'pointer',opacity: previewLoading || !prompt.trim() ? 0.4 : 1,flexShrink:0,fontFamily:F.body}}>
+                        {previewLoading ? 'Gerando roteiro...' : '👁 Ver roteiro antes'}
+                      </button>
+                    )}
                     {generating && (
                       <>
                         <div style={{flex:1,height:'3px',background:C.line,borderRadius:'2px',overflow:'hidden'}}>
@@ -642,6 +677,33 @@ export default function Dashboard() {
                   )}
                 </div>
 
+                {/* Script preview panel */}
+                {scriptPreview && !generating && (
+                  <div style={{background:C.card,border:`1px solid rgba(124,58,237,.3)`,borderRadius:'14px',padding:'20px 22px',boxShadow:shadow.card}}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
+                      <div>
+                        <div style={{fontFamily:F.head,fontSize:'14px',fontWeight:700,color:C.t1,letterSpacing:'-0.02em'}}>Roteiro Gerado — Edite antes de gerar o vídeo</div>
+                        <div style={{fontFamily:F.mono,fontSize:'9px',color:C.violet,marginTop:'3px'}}>{scriptPreview.scenes?.length || 0} cenas · clique em gerar quando estiver pronto</div>
+                      </div>
+                      <button onClick={() => setScriptPreview(null)} style={{background:'transparent',border:'none',color:C.t3,cursor:'pointer',fontSize:'18px',lineHeight:1}}>×</button>
+                    </div>
+                    <div style={{marginBottom:'14px'}}>
+                      <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Título</div>
+                      <input value={scriptPreview.title||''} onChange={e=>setScriptPreview((p:any)=>({...p,title:e.target.value}))}
+                        style={{width:'100%',background:C.raised,border:`1px solid ${C.line}`,borderRadius:'8px',padding:'9px 12px',color:C.t1,fontSize:'13px',outline:'none',fontFamily:F.body,boxSizing:'border-box'}}/>
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:'10px',maxHeight:'300px',overflowY:'auto'}}>
+                      {(scriptPreview.scenes||[]).map((scene:any, i:number) => (
+                        <div key={i} style={{background:C.raised,border:`1px solid ${C.line}`,borderRadius:'10px',padding:'12px 14px'}}>
+                          <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,marginBottom:'8px'}}>CENA {i+1}</div>
+                          <textarea value={scene.text||''} onChange={e=>{const s=[...scriptPreview.scenes]; s[i]={...s[i],text:e.target.value}; setScriptPreview((p:any)=>({...p,scenes:s}))}}
+                            style={{width:'100%',background:'transparent',border:'none',color:C.t2,fontSize:'13px',outline:'none',resize:'vertical',minHeight:'60px',fontFamily:F.body,lineHeight:1.6,boxSizing:'border-box'}}/>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Recent videos */}
                 {videos.length > 0 && (
                   <div style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'14px',overflow:'hidden',boxShadow:shadow.card}}>
@@ -667,24 +729,29 @@ export default function Dashboard() {
             {/* ── VIDEOS ─────────────────────────────────────────── */}
             {view === 'videos' && (
               <div>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:'24px'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px',gap:'12px',flexWrap:'wrap'}}>
                   <div>
                     <h2 style={{fontFamily:F.head,fontSize:'20px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1,marginBottom:'4px'}}>Biblioteca</h2>
                     <div style={{fontFamily:F.mono,fontSize:'10px',color:C.t3}}>{videos.length} vídeo{videos.length!==1?'s':''} gerado{videos.length!==1?'s':''}</div>
                   </div>
-                  <button onClick={() => setView('generator')}
-                    className="btn-primary"
-                    style={{background:`linear-gradient(135deg,${C.red},#9A1028)`,color:'#fff',border:'none',borderRadius:'10px',padding:'10px 20px',fontSize:'12px',fontWeight:700,cursor:'pointer',fontFamily:F.head,letterSpacing:'-0.02em'}}>
-                    + Novo Vídeo
-                  </button>
+                  <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
+                    <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
+                      placeholder="Buscar vídeos..." style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'8px',padding:'8px 12px',color:C.t1,fontSize:'12px',outline:'none',fontFamily:F.body,width:'200px'}}
+                      onFocus={e=>e.target.style.borderColor=C.red} onBlur={e=>e.target.style.borderColor=C.line}/>
+                    <button onClick={() => setView('generator')}
+                      className="btn-primary"
+                      style={{background:`linear-gradient(135deg,${C.red},#9A1028)`,color:'#fff',border:'none',borderRadius:'10px',padding:'10px 20px',fontSize:'12px',fontWeight:700,cursor:'pointer',fontFamily:F.head,letterSpacing:'-0.02em',whiteSpace:'nowrap'}}>
+                      + Novo Vídeo
+                    </button>
+                  </div>
                 </div>
                 {videos.length === 0 ? (
                   <div style={{textAlign:'center',padding:'80px 20px',color:C.t3}}>
                     <div style={{fontSize:'40px',marginBottom:'16px',opacity:.25}}>🎬</div>
                     <div style={{fontFamily:F.head,fontSize:'16px',fontWeight:700,marginBottom:'8px',color:C.t2,letterSpacing:'-0.02em'}}>Nenhum vídeo ainda</div>
-                    <div style={{fontSize:'13px',color:C.t3}}>Gere seu primeiro dark channel agora.</div>
+                    <div style={{fontSize:'13px',color:C.t3}}>Gere seu primeiro vídeo agora.</div>
                   </div>
-                ) : <VideoGrid videos={videos} onSelect={setSelectedVideo}/>}
+                ) : <VideoGrid videos={videos.filter(v => !searchQuery || v.title?.toLowerCase().includes(searchQuery.toLowerCase()) || v.prompt?.toLowerCase().includes(searchQuery.toLowerCase()))} onSelect={setSelectedVideo}/>}
               </div>
             )}
 
@@ -912,6 +979,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   const [audioReady, setAudioReady] = React.useState(!video.audioBase64)
   const [audioDuration, setAudioDuration] = React.useState(0)
   const [audioCurrentTime, setAudioCurrentTime] = React.useState(0)
+  const [copied, setCopied] = React.useState('')
 
   const M = {
     bg:    '#02040A',
@@ -1423,43 +1491,80 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
           </div>}
 
           {tab==="roteiro"&&<div style={{padding:"18px"}}>
-            <div style={{background:M.raised,border:`1px solid ${M.line}`,borderRadius:"10px",padding:"16px",marginBottom:"14px",maxHeight:"300px",overflowY:"auto"}}>
-              <pre style={{fontFamily:"'Inter',sans-serif",fontSize:"13px",color:"#C8D6E8",lineHeight:1.9,whiteSpace:"pre-wrap",margin:0}}>{video.script||"Roteiro não disponível."}</pre>
+            {/* Title copy */}
+            {video.title&&(
+              <div style={{background:M.raised,border:`1px solid ${M.line}`,borderRadius:"10px",padding:"12px 14px",marginBottom:"10px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"12px"}}>
+                <div>
+                  <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:M.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:"4px"}}>Título</div>
+                  <div style={{fontSize:"13px",color:M.t1,fontWeight:600,lineHeight:1.4}}>{video.title}</div>
+                </div>
+                <button onClick={()=>{navigator.clipboard.writeText(video.title||"");setCopied("title")}}
+                  style={{background:copied==="title"?"rgba(5,150,105,.1)":"transparent",border:`1px solid ${copied==="title"?"rgba(5,150,105,.3)":M.line}`,color:copied==="title"?M.green:M.t3,borderRadius:"7px",padding:"6px 12px",fontSize:"11px",cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",flexShrink:0,transition:"all .15s"}}>
+                  {copied==="title"?"✓ Copiado":"Copiar"}
+                </button>
+              </div>
+            )}
+            {/* Script */}
+            <div style={{background:M.raised,border:`1px solid ${M.line}`,borderRadius:"10px",padding:"16px",marginBottom:"10px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
+                <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:M.t3,textTransform:"uppercase",letterSpacing:"0.08em"}}>Roteiro completo</div>
+                <div style={{display:"flex",gap:"6px"}}>
+                  <button onClick={()=>{navigator.clipboard.writeText(video.script||"");setCopied("script")}}
+                    style={{background:copied==="script"?"rgba(5,150,105,.1)":"transparent",border:`1px solid ${copied==="script"?"rgba(5,150,105,.3)":M.line}`,color:copied==="script"?M.green:M.t3,borderRadius:"6px",padding:"4px 10px",fontSize:"10px",cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",transition:"all .15s"}}>
+                    {copied==="script"?"✓ Copiado":"Copiar"}
+                  </button>
+                  <button onClick={()=>{const b=new Blob([video.script||""],{type:"text/plain"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=(video.title||"roteiro").replace(/[^a-zA-Z0-9]/g,"_").substring(0,40)+".txt";a.click();URL.revokeObjectURL(u)}}
+                    style={{background:"transparent",border:`1px solid ${M.line}`,color:M.t3,borderRadius:"6px",padding:"4px 10px",fontSize:"10px",cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",transition:"all .15s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor=M.lineHi;e.currentTarget.style.color=M.t2}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor=M.line;e.currentTarget.style.color=M.t3}}>
+                    ↓ .txt
+                  </button>
+                </div>
+              </div>
+              <div style={{maxHeight:"220px",overflowY:"auto"}}>
+                <pre style={{fontFamily:"'Inter',sans-serif",fontSize:"13px",color:"#C8D6E8",lineHeight:1.9,whiteSpace:"pre-wrap",margin:0}}>{video.script||"Roteiro não disponível."}</pre>
+              </div>
             </div>
+            {/* Description */}
             {video.description&&(
-              <div style={{background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.15)",borderRadius:"10px",padding:"14px",marginBottom:"14px"}}>
-                <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:"#A78BFA",fontWeight:600,marginBottom:"6px",letterSpacing:"0.1em",textTransform:"uppercase"}}>Descrição para publicação</div>
+              <div style={{background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.15)",borderRadius:"10px",padding:"14px",marginBottom:"10px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
+                  <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:"#A78BFA",fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Descrição para publicação</div>
+                  <button onClick={()=>{navigator.clipboard.writeText(video.description||"");setCopied("desc")}}
+                    style={{background:copied==="desc"?"rgba(5,150,105,.1)":"transparent",border:`1px solid ${copied==="desc"?"rgba(5,150,105,.3)":"rgba(124,58,237,.2)"}`,color:copied==="desc"?M.green:"#A78BFA",borderRadius:"6px",padding:"4px 10px",fontSize:"10px",cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",transition:"all .15s"}}>
+                    {copied==="desc"?"✓ Copiado":"Copiar"}
+                  </button>
+                </div>
                 <p style={{fontFamily:"'Inter',sans-serif",fontSize:"12px",color:M.t2,lineHeight:1.75,margin:0}}>{video.description}</p>
               </div>
             )}
-            <div style={{display:"flex",gap:"8px"}}>
-              <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(video.script||"").catch(()=>{})}
-                style={{background:`linear-gradient(135deg,${M.red},#9A1028)`,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 18px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"'Space Grotesk',sans-serif",letterSpacing:"-0.01em"}}>
-                Copiar roteiro
+            {/* Download audio */}
+            {video.audioBase64&&(
+              <button onClick={()=>{const a=document.createElement("a");a.href=video.audioBase64;a.download=(video.title||"audio").replace(/[^a-zA-Z0-9]/g,"_").substring(0,40)+".mp3";a.click()}}
+                style={{background:"rgba(5,150,105,.08)",border:"1px solid rgba(5,150,105,.2)",color:M.green,borderRadius:"8px",padding:"9px 18px",fontSize:"12px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:"8px",transition:"all .15s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="rgba(5,150,105,.15)"}
+                onMouseLeave={e=>e.currentTarget.style.background="rgba(5,150,105,.08)"}>
+                ↓ Baixar áudio (.mp3)
               </button>
-              {video.description&&(
-                <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(video.description||"").catch(()=>{})}
-                  style={{background:"transparent",border:"1px solid rgba(124,58,237,.3)",color:"#A78BFA",borderRadius:"8px",padding:"9px 18px",fontSize:"12px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"background .12s"}}
-                  onMouseEnter={e=>e.currentTarget.style.background="rgba(124,58,237,.08)"}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  Copiar descrição
-                </button>
-              )}
-            </div>
+            )}
           </div>}
 
           {tab==="tags"&&<div style={{padding:"18px"}}>
             <div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"16px"}}>
               {(video.tags||[]).map((tag:string,i:number)=>(
-                <span key={i} style={{background:"rgba(5,150,105,.07)",border:"1px solid rgba(5,150,105,.18)",color:"#059669",padding:"6px 14px",borderRadius:"20px",fontFamily:"'JetBrains Mono',monospace",fontSize:"11px",fontWeight:500,letterSpacing:"0.02em"}}>#{tag}</span>
+                <span key={i} style={{background:"rgba(5,150,105,.07)",border:"1px solid rgba(5,150,105,.18)",color:"#059669",padding:"6px 14px",borderRadius:"20px",fontFamily:"'JetBrains Mono',monospace",fontSize:"11px",fontWeight:500,letterSpacing:"0.02em",cursor:"pointer"}}
+                  onClick={()=>{navigator.clipboard.writeText("#"+tag);setCopied("tag_"+tag)}}
+                  title="Clique para copiar">
+                  {copied==="tag_"+tag?"✓":"#"}{tag}
+                </span>
               ))}
             </div>
             {(video.tags||[]).length>0&&(
-              <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText((video.tags||[]).map((t:string)=>"#"+t).join(" ")).catch(()=>{})}
-                style={{background:"transparent",border:`1px solid ${M.line}`,color:M.t3,borderRadius:"8px",padding:"8px 16px",fontSize:"12px",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:500,transition:"all .12s"}}
+              <button onClick={()=>{navigator.clipboard.writeText((video.tags||[]).map((t:string)=>"#"+t).join(" "));setCopied("alltags")}}
+                style={{background:copied==="alltags"?"rgba(5,150,105,.1)":"transparent",border:`1px solid ${copied==="alltags"?"rgba(5,150,105,.3)":M.line}`,color:copied==="alltags"?M.green:M.t3,borderRadius:"8px",padding:"8px 16px",fontSize:"12px",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:500,transition:"all .15s"}}
                 onMouseEnter={e=>{e.currentTarget.style.borderColor=M.lineHi;e.currentTarget.style.color=M.t2}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor=M.line;e.currentTarget.style.color=M.t3}}>
-                Copiar todas as tags
+                onMouseLeave={e=>{e.currentTarget.style.borderColor=copied==="alltags"?"rgba(5,150,105,.3)":M.line;e.currentTarget.style.color=copied==="alltags"?M.green:M.t3}}>
+                {copied==="alltags"?"✓ Copiadas!":"Copiar todas as tags"}
               </button>
             )}
           </div>}

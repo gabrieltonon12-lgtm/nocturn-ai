@@ -97,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!user.active) return res.status(403).json({ error: 'Conta inativa.' })
     if ((user.credits ?? 0) <= 0) return res.status(402).json({ error: 'Sem creditos. Faca upgrade.' })
 
-    const { prompt, contentType = 'faceless', duration = 'medium', voice = 'masculine', platforms = ['youtube'] } = req.body
+    const { prompt, contentType = 'faceless', duration = 'medium', voice = 'masculine', platforms = ['youtube'], scriptData } = req.body
     if (!prompt?.trim()) return res.status(400).json({ error: 'Prompt obrigatorio' })
 
     const openaiKey = process.env.OPENAI_API_KEY || ''
@@ -111,8 +111,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let audioBase64 = ''
     let images: string[] = []
 
-    // ── STEP 1: GPT-4o gera roteiro estruturado em cenas ──────────────────
-    if (openaiKey) {
+    // ── STEP 1: Use scriptData if provided (from preview), else call GPT-4o ─
+    if (scriptData && scriptData.scenes && scriptData.scenes.length > 0) {
+      // Script was already generated via /api/generate/script — skip GPT call
+      title = scriptData.title || title
+      description = scriptData.description || ''
+      tags = scriptData.tags || []
+      scenes = scriptData.scenes || []
+      script = scenes.map((s: any) => s.text || '').join(' ')
+    } else if (openaiKey) {
       const dMap: Record<string,string> = { short: '4 cenas curtas de 10-15s', medium: '6 cenas de 20-30s', long: '8 cenas de 30-45s' }
       const tone = CONTENT_TONE[contentType] || 'narrador envolvente, tom de documentário'
 

@@ -537,10 +537,12 @@ export default function Home() {
               <div style={{ width: '24px', height: '24px', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, color: '#fff', fontSize: '11px' }}>N</div>
               <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '13px', fontWeight: 700, letterSpacing: '-0.025em' }}>NOCTURN.AI</span>
             </div>
-            <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
               <Link href="#planos" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Planos</Link>
               <Link href="/login" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Entrar</Link>
               <Link href="/register" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Criar conta</Link>
+              <Link href="/termos" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Termos</Link>
+              <Link href="/privacidade" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Privacidade</Link>
               <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>© 2025 NOCTURN.AI</span>
             </div>
           </div>

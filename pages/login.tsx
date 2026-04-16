@@ -104,9 +104,14 @@ export default function Login() {
               </div>
 
               <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
-                <label style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'10px',color:'#364A62',letterSpacing:'0.08em',textTransform:'uppercase'}}>
-                  Senha
-                </label>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <label style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'10px',color:'#364A62',letterSpacing:'0.08em',textTransform:'uppercase'}}>
+                    Senha
+                  </label>
+                  <Link href="/forgot-password" style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'9px',color:'#C5183A',letterSpacing:'0.04em'}}>
+                    Esqueci minha senha
+                  </Link>
+                </div>
                 <input
                   style={inputStyle}
                   type="password"
