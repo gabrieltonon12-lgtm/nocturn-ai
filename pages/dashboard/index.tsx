@@ -410,6 +410,42 @@ export default function Dashboard() {
           {/* Content */}
           <div style={{padding:'28px 32px',flex:1}}>
 
+            {/* ── ONBOARDING BANNER — free user, 0 videos generated ─── */}
+            {user.plan === 'free' && (user.videoCount === 0 || videos.length === 0) && (user.credits ?? 0) >= 1 && view === 'generator' && (
+              <div style={{background:'linear-gradient(135deg,rgba(197,24,58,.12),rgba(124,58,237,.08))',border:'1px solid rgba(197,24,58,.3)',borderRadius:'14px',padding:'20px 24px',marginBottom:'24px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'16px'}}>
+                <div style={{display:'flex',alignItems:'center',gap:'14px'}}>
+                  <div style={{fontSize:'26px',lineHeight:1}}>🎁</div>
+                  <div>
+                    <div style={{fontFamily:F.head,fontSize:'15px',fontWeight:700,color:C.t1,marginBottom:'3px'}}>Você tem 1 crédito grátis!</div>
+                    <div style={{fontFamily:F.body,fontSize:'12px',color:C.t2}}>Gere seu primeiro vídeo agora — sem precisar de cartão.</div>
+                  </div>
+                </div>
+                <button onClick={() => { const el = document.getElementById('prompt-textarea'); el?.focus(); el?.scrollIntoView({behavior:'smooth'}) }}
+                  className="btn-primary"
+                  style={{background:`linear-gradient(135deg,${C.red},#8B0A22)`,border:'none',color:'#fff',padding:'10px 20px',borderRadius:'9px',fontFamily:F.head,fontSize:'13px',fontWeight:700,cursor:'pointer',flexShrink:0,boxShadow:shadow.red,whiteSpace:'nowrap'}}>
+                  Gerar agora →
+                </button>
+              </div>
+            )}
+
+            {/* ── UPGRADE BANNER — free user, used their 1 free credit ── */}
+            {user.plan === 'free' && (user.credits ?? 0) === 0 && videos.length >= 1 && view === 'generator' && (
+              <div style={{background:'linear-gradient(135deg,rgba(217,119,6,.1),rgba(197,24,58,.08))',border:'1px solid rgba(217,119,6,.35)',borderRadius:'14px',padding:'20px 24px',marginBottom:'24px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'16px'}}>
+                <div style={{display:'flex',alignItems:'center',gap:'14px'}}>
+                  <div style={{fontSize:'26px',lineHeight:1}}>⚡</div>
+                  <div>
+                    <div style={{fontFamily:F.head,fontSize:'15px',fontWeight:700,color:C.t1,marginBottom:'3px'}}>Seu crédito grátis foi usado!</div>
+                    <div style={{fontFamily:F.body,fontSize:'12px',color:C.t2}}>Faça upgrade para continuar gerando vídeos virais todos os dias.</div>
+                  </div>
+                </div>
+                <button onClick={() => setView('billing')}
+                  className="btn-primary"
+                  style={{background:`linear-gradient(135deg,#D97706,#b45309)`,border:'none',color:'#fff',padding:'10px 20px',borderRadius:'9px',fontFamily:F.head,fontSize:'13px',fontWeight:700,cursor:'pointer',flexShrink:0,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(217,119,6,.3)'}}>
+                  Ver planos →
+                </button>
+              </div>
+            )}
+
             {/* ── GENERATOR ─────────────────────────────────────── */}
             {view === 'generator' && (
               <div style={{maxWidth:'960px'}}>
@@ -496,6 +532,7 @@ export default function Dashboard() {
                   <div style={{display:'flex',flexDirection:'column',gap:'6px',marginBottom:'20px'}}>
                     <label style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Prompt / Tema do Vídeo</label>
                     <textarea
+                      id="prompt-textarea"
                       className="textarea-prompt"
                       value={prompt}
                       onChange={e => setPrompt(e.target.value)}
