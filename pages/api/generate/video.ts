@@ -97,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!user.active) return res.status(403).json({ error: 'Conta inativa.' })
     if ((user.credits ?? 0) <= 0) return res.status(402).json({ error: 'Sem creditos. Faca upgrade.' })
 
-    const { prompt, contentType = 'faceless', duration = 'medium', voice = 'masculine', platforms = ['youtube'], scriptData } = req.body
+    const { prompt, contentType = 'faceless', duration = 'medium', voice = 'masculine', platforms = ['youtube'], format = 'landscape', language = 'pt', scriptData } = req.body
     if (!prompt?.trim()) return res.status(400).json({ error: 'Prompt obrigatorio' })
 
     const openaiKey = process.env.OPENAI_API_KEY || ''
@@ -122,6 +122,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } else if (openaiKey) {
       const dMap: Record<string,string> = { short: '4 cenas curtas de 10-15s', medium: '6 cenas de 20-30s', long: '8 cenas de 30-45s' }
       const tone = CONTENT_TONE[contentType] || 'narrador envolvente, tom de documentário'
+      const langMap: Record<string,string> = {
+        pt: 'português brasileiro fluido e natural',
+        en: 'fluent American English, natural and engaging',
+        es: 'español latinoamericano fluido y natural',
+      }
+      const langInstruction = langMap[language] || langMap.pt
 
       try {
         const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -134,7 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               role: 'system',
               content: `Você é roteirista profissional especialista em vídeos virais no YouTube.
 REGRA ABSOLUTA: O roteiro DEVE ser EXATAMENTE sobre o tema informado pelo usuário. Nunca desvie do assunto.
-Escreva em português brasileiro fluido e natural.
+Escreva em ${langInstruction}.
 Estrutura: ${dMap[duration] || '6 cenas de 20-30s'}. Tom: ${tone}.
 
 IMPORTANTE:
@@ -213,6 +219,8 @@ RETORNE APENAS JSON válido, sem markdown:
       duration,
       voice,
       platforms,
+      format,
+      language,
       scenes,    // cenas com texto + imageQuery
       images,    // URLs das imagens Pexels
       audioBase64, // narração ElevenLabs em base64

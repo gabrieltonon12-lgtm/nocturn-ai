@@ -96,6 +96,10 @@ export default function Dashboard() {
   const [scriptPreview, setScriptPreview] = useState<any>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [toast, setToast] = useState('')
+  const [format, setFormat] = useState('landscape')
+  const [language, setLanguage] = useState('pt')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -114,6 +118,13 @@ export default function Dashboard() {
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [logs])
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const togglePlat = (p: string) =>
     setPlatforms(prev => (prev||[]).includes(p) ? (prev||[]).filter(x => x !== p) : [...(prev||[]), p])
@@ -169,7 +180,7 @@ export default function Dashboard() {
       const res = await fetch('/api/generate/video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ prompt, contentType, duration, voice, platforms, scriptData: preScript || undefined })
+        body: JSON.stringify({ prompt, contentType, duration, voice, platforms, format, language, scriptData: preScript || undefined })
       })
       const data = await res.json()
       setTimeout(async () => {
@@ -286,6 +297,16 @@ export default function Dashboard() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${C.lineHi}; border-radius: 4px; }
         @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+        @keyframes slideIn { from{transform:translateX(-100%)} to{transform:translateX(0)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @media(max-width:767px) {
+          .sidebar-overlay { display:block !important; }
+          .main-content { padding: 16px !important; }
+          .topbar-inner { padding: 0 16px !important; }
+          .stat-grid { grid-template-columns: repeat(2,1fr) !important; }
+          .sel-grid { grid-template-columns: 1fr !important; }
+          .billing-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
 
       {/* Toast */}
@@ -297,8 +318,17 @@ export default function Dashboard() {
 
       <div style={{display:'flex',height:'100vh',overflow:'hidden',background:C.base,color:C.t1,fontFamily:F.body}}>
 
+        {/* Mobile overlay backdrop */}
+        {isMobile && sidebarOpen && (
+          <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}
+            style={{position:'fixed',inset:0,background:'rgba(2,4,10,.7)',zIndex:40,backdropFilter:'blur(2px)',animation:'fadeIn .2s ease'}}/>
+        )}
+
         {/* ── SIDEBAR ─────────────────────────────────────────── */}
-        <div style={{width:'240px',background:C.layer,borderRight:`1px solid ${C.line}`,display:'flex',flexDirection:'column',flexShrink:0}}>
+        <div style={{
+          width:'240px',background:C.layer,borderRight:`1px solid ${C.line}`,display:'flex',flexDirection:'column',flexShrink:0,
+          ...(isMobile ? {position:'fixed',top:0,left:0,bottom:0,zIndex:50,transform:sidebarOpen?'translateX(0)':'translateX(-100%)',transition:'transform .25s ease',boxShadow:'4px 0 24px rgba(0,0,0,.6)'} : {}),
+        }}>
 
           {/* Logo */}
           <div style={{padding:'20px 18px 18px',borderBottom:`1px solid ${C.line}`,display:'flex',alignItems:'center',gap:'12px'}}>
@@ -419,8 +449,14 @@ export default function Dashboard() {
         <div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column'}}>
 
           {/* Top bar */}
-          <div style={{padding:'0 32px',height:'56px',borderBottom:`1px solid ${C.line}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:`rgba(5,8,15,.92)`,position:'sticky',top:0,zIndex:10,backdropFilter:'blur(12px)',flexShrink:0}}>
+          <div className="topbar-inner" style={{padding:'0 32px',height:'56px',borderBottom:`1px solid ${C.line}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:`rgba(5,8,15,.92)`,position:'sticky',top:0,zIndex:10,backdropFilter:'blur(12px)',flexShrink:0}}>
             <div style={{display:'flex',alignItems:'center',gap:'16px'}}>
+              {isMobile && (
+                <button onClick={() => setSidebarOpen(o => !o)}
+                  style={{background:'none',border:`1px solid ${C.lineHi}`,color:C.t2,borderRadius:'8px',padding:'6px 10px',cursor:'pointer',fontSize:'16px',lineHeight:1,flexShrink:0}}>
+                  ☰
+                </button>
+              )}
               <div style={{fontFamily:F.head,fontSize:'16px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1}}>
                 {view==='generator'?'Gerar Vídeo':view==='videos'?'Biblioteca':view==='rewards'?'Rewards':'Assinatura'}
               </div>
@@ -437,7 +473,7 @@ export default function Dashboard() {
           </div>
 
           {/* Content */}
-          <div style={{padding:'28px 32px',flex:1}}>
+          <div className="main-content" style={{padding:'28px 32px',flex:1}}>
 
             {/* ── ONBOARDING BANNER — free user, 0 videos generated ─── */}
             {user.plan === 'free' && (user.videoCount === 0 || videos.length === 0) && (user.credits ?? 0) >= 1 && view === 'generator' && (
@@ -480,7 +516,7 @@ export default function Dashboard() {
               <div style={{maxWidth:'960px'}}>
 
                 {/* Stats row */}
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px',marginBottom:'24px'}}>
+                <div className="stat-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px',marginBottom:'24px'}}>
                   {[
                     {label:'Vídeos Gerados', value:videos.length, sub:'total na biblioteca', highlight:true},
                     {label:'Créditos', value:maxCredits===99999?'∞':Math.min(user.credits??0,maxCredits), sub:maxCredits===99999?'ilimitados':`de ${maxCredits} disponíveis`},
@@ -517,6 +553,7 @@ export default function Dashboard() {
                     <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
                       <label style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Tipo de Conteúdo</label>
                       <select value={contentType} onChange={e=>setContentType(e.target.value)} style={selStyle}>
+
                         <option value="faceless">Faceless / Dark Channel</option>
                         <option value="educational">Educativo / Documentário</option>
                         <option value="inspirational">Inspiracional / Motivacional</option>
@@ -538,6 +575,25 @@ export default function Dashboard() {
                         <option value="short">Short / Reel (30–60s)</option>
                         <option value="medium">Médio (5–10 min)</option>
                         <option value="long">Longo (15–30 min)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Format + Language row */}
+                  <div className="sel-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px',marginBottom:'20px'}}>
+                    <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                      <label style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Formato</label>
+                      <select value={format} onChange={e=>setFormat(e.target.value)} style={selStyle}>
+                        <option value="landscape">Horizontal 16:9 — YouTube</option>
+                        <option value="portrait">Vertical 9:16 — Shorts / TikTok</option>
+                      </select>
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                      <label style={{fontFamily:F.mono,fontSize:'8px',color:C.t3,letterSpacing:'0.1em',textTransform:'uppercase'}}>Idioma</label>
+                      <select value={language} onChange={e=>setLanguage(e.target.value)} style={selStyle}>
+                        <option value="pt">🇧🇷 Português (PT-BR)</option>
+                        <option value="en">🇺🇸 English (US)</option>
+                        <option value="es">🇪🇸 Español (Latinoamérica)</option>
                       </select>
                     </div>
                   </div>
@@ -1124,8 +1180,9 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   }
 
   // ── Draw canvas frame ──────────────────────────────────────────────────────
+  const isPortrait = video.format === 'portrait'
   const drawFrame = React.useCallback((ctx: CanvasRenderingContext2D, sceneIdx: number, pct: number, globalT?: number) => {
-    const W = 1280, H = 720
+    const W = isPortrait ? 720 : 1280, H = isPortrait ? 1280 : 720
     ctx.clearRect(0, 0, W, H)
     const imgs = loadedImgsRef.current
     const img = imgs[sceneIdx] || imgs[0] || null
@@ -1283,7 +1340,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     setDownloading(true); setDlPct(0); setDlLabel("Preparando...")
     try {
       const off = document.createElement("canvas")
-      off.width=1280; off.height=720
+      off.width=isPortrait?720:1280; off.height=isPortrait?1280:720
       const ctx = off.getContext("2d")!
       const stream = off.captureStream(30)
       if (video.audioBase64) {
@@ -1377,7 +1434,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
           {tab==="player"&&<div>
             {/* Canvas */}
             <div style={{position:"relative",background:"#000",lineHeight:0}}>
-              <canvas ref={canvasRef} width={1280} height={720} style={{width:"100%",display:"block",aspectRatio:"16/9",maxHeight:"420px"}}/>
+              <canvas ref={canvasRef} width={isPortrait?720:1280} height={isPortrait?1280:720} style={{width:"100%",display:"block",aspectRatio:isPortrait?"9/16":"16/9",maxHeight:isPortrait?"600px":"420px"}}/>
               {!isPlaying&&imgsReady&&audioReady&&(
                 <div onClick={startPlay} style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
                   <div style={{width:"68px",height:"68px",background:"rgba(197,24,58,.92)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"26px",color:"#fff",boxShadow:"0 8px 40px rgba(197,24,58,.5)",backdropFilter:"blur(4px)",transition:"transform .15s"}}
