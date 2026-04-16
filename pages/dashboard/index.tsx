@@ -256,6 +256,7 @@ export default function Dashboard() {
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${C.lineHi}; border-radius: 4px; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
       `}</style>
 
       {/* Toast */}
@@ -850,15 +851,22 @@ function VideoGrid({videos, onSelect}: {videos:any[], onSelect:(v:any)=>void}) {
 function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const audioRef = React.useRef<HTMLAudioElement>(null)
-  const animRef = React.useRef<number>(null)
+  const animRef = React.useRef<number | null>(null)
+  const sceneTimingRef = React.useRef<Array<{start:number, end:number}>>([])
+  const isPlayingRef = React.useRef(false)
+  const loadedImgsRef = React.useRef<(HTMLImageElement|null)[]>([])
+
   const [tab, setTab] = React.useState("player")
   const [isPlaying, setIsPlaying] = React.useState(false)
   const [currentScene, setCurrentScene] = React.useState(0)
   const [downloading, setDownloading] = React.useState(false)
   const [dlPct, setDlPct] = React.useState(0)
   const [dlLabel, setDlLabel] = React.useState("")
-  const [loadedImgs, setLoadedImgs] = React.useState<any[]>([])
+  const [loadedImgs, setLoadedImgs] = React.useState<(HTMLImageElement|null)[]>([])
   const [imgsReady, setImgsReady] = React.useState(false)
+  const [audioReady, setAudioReady] = React.useState(!video.audioBase64)
+  const [audioDuration, setAudioDuration] = React.useState(0)
+  const [audioCurrentTime, setAudioCurrentTime] = React.useState(0)
 
   const M = {
     bg:    '#02040A',
@@ -878,100 +886,267 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   const images = video.images || []
   const scenes = video.scenes || []
   const N = Math.max(scenes.length, images.length, 1)
-  const secPerScene = video.duration === "short" ? 3 : video.duration === "long" ? 8 : 5
+  const hasAudio = !!video.audioBase64
+  const secPerScene = video.duration === "short" ? 4 : video.duration === "long" ? 10 : 6
 
+  // ── Load images ────────────────────────────────────────────────────────────
   React.useEffect(() => {
     if (images.length === 0) { setImgsReady(true); return }
     let done = 0
-    const loaded: any[] = []
+    const loaded: (HTMLImageElement|null)[] = new Array(images.length).fill(null)
     images.forEach((url: string, i: number) => {
       const img = new Image()
       img.crossOrigin = "anonymous"
-      img.onload = () => { loaded[i]=img; done++; if(done===images.length){setLoadedImgs(loaded);setImgsReady(true)} }
-      img.onerror = () => { loaded[i]=null; done++; if(done===images.length){setLoadedImgs(loaded);setImgsReady(true)} }
+      img.onload = () => {
+        loaded[i] = img; done++
+        if (done === images.length) { loadedImgsRef.current = loaded; setLoadedImgs(loaded); setImgsReady(true) }
+      }
+      img.onerror = () => {
+        done++
+        if (done === images.length) { loadedImgsRef.current = loaded; setLoadedImgs(loaded); setImgsReady(true) }
+      }
       img.src = url
     })
   }, [])
 
-  const drawFrame = (ctx: CanvasRenderingContext2D, sceneIdx: number, pct: number) => {
-    const W=1280, H=720
-    ctx.clearRect(0,0,W,H)
-    const img = loadedImgs[sceneIdx] || loadedImgs[0] || null
-    if (img) {
-      const scale = 1 + pct * 0.04
-      ctx.save()
-      ctx.filter = "brightness(0.45) saturate(0.7)"
-      ctx.drawImage(img, (W-W*scale)/2, (H-H*scale)/2, W*scale, H*scale)
-      ctx.restore()
-    } else {
-      const g = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,640)
-      g.addColorStop(0,"#120818"); g.addColorStop(1,"#020408")
-      ctx.fillStyle=g; ctx.fillRect(0,0,W,H)
+  // ── Compute scene timing from audio duration (word-count based) ────────────
+  const computeSceneTiming = React.useCallback((duration: number) => {
+    if (scenes.length === 0 || duration <= 0) return
+    const wcs = scenes.map((s: any) => Math.max(1, (s.text || '').split(/\s+/).filter(Boolean).length))
+    const totalW = wcs.reduce((a: number, b: number) => a + b, 0)
+    let t = 0
+    sceneTimingRef.current = wcs.map((wc: number) => {
+      const start = t
+      t += (wc / totalW) * duration
+      return { start, end: t }
+    })
+  }, [scenes])
+
+  const onAudioLoaded = React.useCallback(() => {
+    const dur = audioRef.current?.duration || 0
+    if (dur > 0) {
+      setAudioDuration(dur)
+      computeSceneTiming(dur)
     }
-    const ov = ctx.createLinearGradient(0,H*0.4,0,H)
-    ov.addColorStop(0,"rgba(0,0,0,0)"); ov.addColorStop(1,"rgba(0,0,0,0.94)")
-    ctx.fillStyle=ov; ctx.fillRect(0,0,W,H)
-    const text = scenes[sceneIdx] ? (scenes[sceneIdx].text||"") : (video.script||"").substring(sceneIdx*100,(sceneIdx+1)*100)
-    if (text) {
-      ctx.save()
-      ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillRect(40,H-144,W-80,124)
-      ctx.fillStyle="#fff"; ctx.font="bold 28px 'Inter',Arial"; ctx.textAlign="center"
-      ctx.shadowColor="rgba(0,0,0,0.9)"; ctx.shadowBlur=12
-      const words=text.split(" "); let line=""; let y=H-96
-      for (const w of words) {
-        const t = line ? line+" "+w : w
-        if (ctx.measureText(t).width > W-180 && line) { ctx.fillText(line,W/2,y); line=w; y+=38 } else line=t
+    setAudioReady(true)
+  }, [computeSceneTiming])
+
+  // ── Draw subtitles: karaoke word-by-word highlighting ──────────────────────
+  const drawSubtitles = (ctx: CanvasRenderingContext2D, text: string, wordProgress: number, W: number, H: number) => {
+    if (!text.trim()) return
+    ctx.save()
+    ctx.font = 'bold 25px Arial, sans-serif'
+    ctx.textBaseline = 'alphabetic'
+
+    const words = text.split(/\s+/).filter(Boolean)
+    const maxLineW = W - 100
+    type LineData = { words: string[], width: number }
+    const lines: LineData[] = []
+    let line: string[] = [], lineW = 0
+
+    for (const word of words) {
+      const ww = ctx.measureText(word + ' ').width
+      if (lineW + ww > maxLineW && line.length > 0) {
+        lines.push({ words: [...line], width: lineW })
+        line = [word]; lineW = ww
+      } else {
+        line.push(word); lineW += ww
       }
-      if (line) ctx.fillText(line,W/2,y)
-      ctx.restore()
     }
-    ctx.fillStyle="rgba(0,0,0,0.7)"; ctx.fillRect(16,16,152,36)
-    ctx.fillStyle="#C5183A"; ctx.font="bold 13px 'Space Grotesk',Arial"; ctx.textAlign="left"; ctx.shadowBlur=0
-    ctx.fillText("NOCTURN.AI",28,39)
-    ctx.fillStyle="rgba(197,24,58,0.88)"; ctx.fillRect(W-68,16,52,28)
-    ctx.fillStyle="#fff"; ctx.font="bold 11px 'JetBrains Mono',monospace"; ctx.textAlign="center"
-    ctx.fillText((sceneIdx+1)+"/"+N, W-42, 34)
-    ctx.fillStyle="rgba(197,24,58,0.85)"; ctx.fillRect(0,H-4,W*((sceneIdx+pct)/N),4)
+    if (line.length > 0) lines.push({ words: line, width: lineW })
+
+    const lineH = 36
+    const totalH = lines.length * lineH + 24
+    const baseY = H - 18
+
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.62)'
+    ctx.beginPath()
+    const bgX = 30, bgY = baseY - totalH - 2, bgW = W - 60, bgHH = totalH + 4
+    const r = 8
+    ctx.moveTo(bgX + r, bgY); ctx.lineTo(bgX + bgW - r, bgY)
+    ctx.arcTo(bgX + bgW, bgY, bgX + bgW, bgY + r, r)
+    ctx.lineTo(bgX + bgW, bgY + bgHH - r)
+    ctx.arcTo(bgX + bgW, bgY + bgHH, bgX + bgW - r, bgY + bgHH, r)
+    ctx.lineTo(bgX + r, bgY + bgHH)
+    ctx.arcTo(bgX, bgY + bgHH, bgX, bgY + bgHH - r, r)
+    ctx.lineTo(bgX, bgY + r)
+    ctx.arcTo(bgX, bgY, bgX + r, bgY, r)
+    ctx.closePath()
+    ctx.fill()
+
+    // Draw words with highlighting
+    let gi = 0
+    lines.forEach((ln, li) => {
+      const y = baseY - (lines.length - 1 - li) * lineH - 6
+      let x = (W - ln.width) / 2
+      ln.words.forEach((word: string) => {
+        const active = gi < wordProgress
+        const current = gi === Math.floor(wordProgress)
+        if (current) {
+          ctx.shadowColor = 'rgba(255,229,92,0.6)'; ctx.shadowBlur = 14
+          ctx.fillStyle = '#FFE55C'
+        } else if (active) {
+          ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 8
+          ctx.fillStyle = '#FFFFFF'
+        } else {
+          ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 6
+          ctx.fillStyle = 'rgba(255,255,255,0.38)'
+        }
+        ctx.fillText(word, x, y)
+        x += ctx.measureText(word + ' ').width
+        gi++
+      })
+    })
+    ctx.restore()
   }
 
-  const startPlay = () => {
-    if (!canvasRef.current || !imgsReady) return
-    const ctx = canvasRef.current.getContext("2d")!
-    setIsPlaying(true)
-    if (audioRef.current && video.audioBase64) {
-      audioRef.current.currentTime=0
-      audioRef.current.play().catch(()=>{})
+  // ── Draw canvas frame ──────────────────────────────────────────────────────
+  const drawFrame = React.useCallback((ctx: CanvasRenderingContext2D, sceneIdx: number, pct: number) => {
+    const W = 1280, H = 720
+    ctx.clearRect(0, 0, W, H)
+    const imgs = loadedImgsRef.current
+    const img = imgs[sceneIdx] || imgs[0] || null
+
+    if (img) {
+      const scale = 1 + pct * 0.035
+      ctx.save()
+      ctx.filter = 'brightness(0.38) saturate(0.6)'
+      ctx.drawImage(img, (W - W*scale)/2, (H - H*scale)/2, W*scale, H*scale)
+      ctx.restore()
+    } else {
+      const g = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 640)
+      g.addColorStop(0, '#0D0515'); g.addColorStop(1, '#020408')
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     }
-    let sc=0, scStart=performance.now()
+
+    // Dark vignette overlay
+    const ov = ctx.createLinearGradient(0, H*0.28, 0, H)
+    ov.addColorStop(0, 'rgba(0,0,0,0)'); ov.addColorStop(0.6, 'rgba(0,0,0,0.55)'); ov.addColorStop(1, 'rgba(0,0,0,0.96)')
+    ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H)
+
+    // Karaoke subtitles
+    const sceneData = scenes[sceneIdx]
+    const text = sceneData?.text || (video.script || '').substring(sceneIdx * 120, (sceneIdx + 1) * 120)
+    const wordCount = text.split(/\s+/).filter(Boolean).length
+    drawSubtitles(ctx, text, pct * wordCount, W, H)
+
+    // Watermark
+    ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fillRect(14, 14, 154, 34)
+    ctx.fillStyle = '#C5183A'; ctx.font = 'bold 13px Arial'; ctx.textAlign = 'left'; ctx.shadowBlur = 0
+    ctx.fillText('NOCTURN.AI', 26, 37)
+
+    // Scene counter badge
+    ctx.fillStyle = 'rgba(197,24,58,0.88)'; ctx.fillRect(W - 66, 14, 52, 28)
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center'
+    ctx.fillText(`${sceneIdx+1}/${N}`, W - 40, 33)
+
+    // Progress bar
+    const prog = (sceneIdx + pct) / N
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(0, H - 5, W, 5)
+    ctx.fillStyle = '#C5183A'; ctx.fillRect(0, H - 5, W * prog, 5)
+  }, [scenes, N, video.script])
+
+  // ── Playback loop ──────────────────────────────────────────────────────────
+  const cancelLoop = React.useCallback(() => {
+    if (animRef.current) { cancelAnimationFrame(animRef.current); animRef.current = null }
+  }, [])
+
+  const startPlay = React.useCallback(() => {
+    if (!canvasRef.current || !imgsReady) return
+    const ctx = canvasRef.current.getContext('2d')!
+    const audio = audioRef.current
+    isPlayingRef.current = true
+    setIsPlaying(true)
+
+    if (audio && hasAudio) {
+      audio.currentTime = 0
+      audio.play().catch(() => {})
+    }
+
+    // Timer fallback for no-audio / no timing computed yet
+    let timerStart = performance.now()
+
     const loop = () => {
-      const now=performance.now()
-      const pct=Math.min((now-scStart)/1000/secPerScene,1)
-      drawFrame(ctx,sc,pct)
-      if (pct>=1) {
-        sc++; scStart=now; setCurrentScene(sc)
-        if (sc>=N) {
-          drawFrame(ctx,N-1,1); setIsPlaying(false); setCurrentScene(0)
-          if(audioRef.current){audioRef.current.pause();audioRef.current.currentTime=0}
+      if (!isPlayingRef.current) return
+      let sceneIdx: number, pct: number
+
+      if (audio && hasAudio && sceneTimingRef.current.length > 0) {
+        // ── Audio-driven (primary mode) ──
+        const t = audio.currentTime
+        setAudioCurrentTime(t)
+
+        // Find which scene we're in
+        sceneIdx = 0
+        for (let i = sceneTimingRef.current.length - 1; i >= 0; i--) {
+          if (t >= sceneTimingRef.current[i].start) { sceneIdx = i; break }
+        }
+        const timing = sceneTimingRef.current[sceneIdx]
+        const sceneDur = timing.end - timing.start
+        pct = sceneDur > 0 ? Math.min((t - timing.start) / sceneDur, 1) : 0
+
+        if (audio.ended || t >= (audioDuration || N * secPerScene)) {
+          drawFrame(ctx, N - 1, 1)
+          isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
+          return
+        }
+      } else {
+        // ── Timer-driven fallback ──
+        const elapsed = (performance.now() - timerStart) / 1000
+        setAudioCurrentTime(elapsed)
+        sceneIdx = Math.min(Math.floor(elapsed / secPerScene), N - 1)
+        pct = Math.min((elapsed % secPerScene) / secPerScene, 1)
+
+        if (elapsed >= N * secPerScene) {
+          drawFrame(ctx, N - 1, 1)
+          isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
+          if (audio) { audio.pause(); audio.currentTime = 0 }
           return
         }
       }
-      animRef.current=requestAnimationFrame(loop)
-    }
-    animRef.current=requestAnimationFrame(loop)
-  }
 
-  const stopPlay = () => {
-    setIsPlaying(false); setCurrentScene(0)
-    if (animRef.current) cancelAnimationFrame(animRef.current)
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime=0 }
-    if (canvasRef.current && imgsReady) drawFrame(canvasRef.current.getContext("2d")!,0,0)
-  }
+      setCurrentScene(sceneIdx)
+      drawFrame(ctx, sceneIdx, pct)
+      animRef.current = requestAnimationFrame(loop)
+    }
+
+    animRef.current = requestAnimationFrame(loop)
+  }, [imgsReady, hasAudio, drawFrame, N, secPerScene, audioDuration, cancelLoop])
+
+  const stopPlay = React.useCallback(() => {
+    isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
+    cancelLoop()
+    const audio = audioRef.current
+    if (audio) { audio.pause(); audio.currentTime = 0 }
+    const canvas = canvasRef.current
+    if (canvas && imgsReady) drawFrame(canvas.getContext('2d')!, 0, 0)
+  }, [imgsReady, drawFrame, cancelLoop])
+
+  const seekTo = React.useCallback((pct: number) => {
+    const audio = audioRef.current
+    const dur = audioDuration || N * secPerScene
+    if (audio && hasAudio) {
+      audio.currentTime = pct * dur
+    }
+    if (!isPlayingRef.current && canvasRef.current && imgsReady) {
+      const t = pct * dur
+      let sceneIdx = 0
+      if (sceneTimingRef.current.length > 0) {
+        for (let i = sceneTimingRef.current.length - 1; i >= 0; i--) {
+          if (t >= sceneTimingRef.current[i].start) { sceneIdx = i; break }
+        }
+        const timing = sceneTimingRef.current[sceneIdx]
+        const scenePct = timing ? Math.min((t - timing.start) / (timing.end - timing.start), 1) : 0
+        drawFrame(canvasRef.current.getContext('2d')!, sceneIdx, scenePct)
+      }
+    }
+  }, [audioDuration, N, secPerScene, hasAudio, imgsReady, drawFrame])
 
   React.useEffect(() => {
-    if (imgsReady && canvasRef.current) drawFrame(canvasRef.current.getContext("2d")!,0,0)
-  }, [imgsReady])
+    if (imgsReady && canvasRef.current) drawFrame(canvasRef.current.getContext('2d')!, 0, 0)
+  }, [imgsReady, drawFrame])
 
-  React.useEffect(() => () => { if(animRef.current) cancelAnimationFrame(animRef.current) }, [])
+  React.useEffect(() => () => { isPlayingRef.current = false; cancelLoop() }, [cancelLoop])
 
   const downloadVideo = async () => {
     if (images.length===0) { alert("Gere um novo vídeo para ter imagens."); return }
@@ -1020,8 +1195,17 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     }
   }
 
+  // ── Format time mm:ss ──────────────────────────────────────────────────────
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60)
+    return `${m}:${sec.toString().padStart(2, '0')}`
+  }
+
+  const totalDur = audioDuration || N * secPerScene
+  const seekPct = totalDur > 0 ? Math.min(audioCurrentTime / totalDur, 1) : 0
+
   return (
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"16px",backdropFilter:"blur(12px)"}}>
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"16px",backdropFilter:"blur(16px)"}}>
       <div onClick={e=>e.stopPropagation()} style={{background:M.bg,border:`1px solid ${M.lineHi}`,borderRadius:"20px",width:"100%",maxWidth:"820px",maxHeight:"95vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 32px 80px rgba(0,0,0,.9),0 4px 16px rgba(0,0,0,.5)"}}>
 
         {/* Header */}
@@ -1032,7 +1216,9 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
               {(video.platforms||[]).map((p:string)=>(
                 <span key={p} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",padding:"2px 7px",borderRadius:"5px",background:"rgba(255,255,255,.04)",color:M.t3,fontWeight:500,border:`1px solid ${M.line}`}}>{p}</span>
               ))}
-              {video.hasAudio&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",padding:"2px 7px",borderRadius:"5px",background:"rgba(5,150,105,.1)",color:M.green,fontWeight:500,border:"1px solid rgba(5,150,105,.2)"}}>OpenAI TTS</span>}
+              {video.hasAudio&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",padding:"2px 7px",borderRadius:"5px",background:"rgba(5,150,105,.1)",color:M.green,fontWeight:500,border:"1px solid rgba(5,150,105,.2)"}}>
+                {audioReady ? "TTS sincronizado" : "Carregando áudio..."}
+              </span>}
               {images.length>0&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",padding:"2px 7px",borderRadius:"5px",background:"rgba(124,58,237,.1)",color:"#A78BFA",fontWeight:500,border:"1px solid rgba(124,58,237,.2)"}}>{images.length} cenas</span>}
             </div>
           </div>
@@ -1044,69 +1230,91 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                 color:tab===t?'#fff':M.t3,
                 border:'none',borderRadius:"7px",padding:"5px 14px",
                 fontSize:"11px",fontWeight:tab===t?700:400,cursor:"pointer",
-                fontFamily:"'Inter',sans-serif",letterSpacing:"-0.01em",
-                transition:"all .12s",
+                fontFamily:"'Inter',sans-serif",letterSpacing:"-0.01em",transition:"all .12s",
               }}>
                 {t==="player"?"Player":t==="roteiro"?"Roteiro":"Tags"}
               </button>
             ))}
           </div>
           <button onClick={()=>{stopPlay();onClose()}}
-            style={{background:"rgba(255,255,255,.04)",border:`1px solid ${M.line}`,color:M.t2,fontSize:"14px",cursor:"pointer",width:"30px",height:"30px",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"sans-serif",transition:"all .12s"}}
+            style={{background:"rgba(255,255,255,.04)",border:`1px solid ${M.line}`,color:M.t2,fontSize:"14px",cursor:"pointer",width:"30px",height:"30px",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .12s"}}
             onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,.09)";e.currentTarget.style.color=M.t1}}
-            onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,.04)";e.currentTarget.style.color=M.t2}}>
-            ×
-          </button>
+            onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,.04)";e.currentTarget.style.color=M.t2}}>×</button>
         </div>
 
         <div style={{flex:1,overflow:"auto"}}>
 
           {tab==="player"&&<div>
+            {/* Canvas */}
             <div style={{position:"relative",background:"#000",lineHeight:0}}>
               <canvas ref={canvasRef} width={1280} height={720} style={{width:"100%",display:"block",aspectRatio:"16/9",maxHeight:"420px"}}/>
-              {!isPlaying&&imgsReady&&(
-                <div onClick={startPlay} style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",background:"rgba(0,0,0,.15)"}}>
+              {!isPlaying&&imgsReady&&audioReady&&(
+                <div onClick={startPlay} style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
                   <div style={{width:"68px",height:"68px",background:"rgba(197,24,58,.92)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"26px",color:"#fff",boxShadow:"0 8px 40px rgba(197,24,58,.5)",backdropFilter:"blur(4px)",transition:"transform .15s"}}
-                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.transform="scale(1.08)"}
-                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.transform="scale(1)"}>
-                    ▶
-                  </div>
+                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.transform="scale(1.1)"}
+                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.transform="scale(1)"}>▶</div>
                 </div>
               )}
-              {!imgsReady&&(
-                <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000"}}>
-                  <div style={{textAlign:"center",color:M.t3,fontSize:"13px"}}>
-                    <div style={{width:"20px",height:"20px",border:`2px solid ${M.lineHi}`,borderTopColor:M.red,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
-                    Carregando imagens...
+              {(!imgsReady||!audioReady)&&(
+                <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.7)"}}>
+                  <div style={{textAlign:"center",color:M.t3,fontSize:"12px",fontFamily:"'JetBrains Mono',monospace"}}>
+                    <div style={{width:"20px",height:"20px",border:`2px solid ${M.lineHi}`,borderTopColor:M.red,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 10px"}}/>
+                    {!imgsReady ? "Carregando cenas..." : "Carregando áudio..."}
                   </div>
                 </div>
               )}
             </div>
 
-            {video.audioBase64&&<audio ref={audioRef} src={video.audioBase64} style={{display:"none"}}/>}
+            {/* Hidden audio with metadata handler */}
+            {video.audioBase64&&(
+              <audio ref={audioRef} src={video.audioBase64} style={{display:"none"}}
+                onLoadedMetadata={onAudioLoaded}
+                onEnded={()=>{isPlayingRef.current=false;setIsPlaying(false);setCurrentScene(0);setAudioCurrentTime(0);cancelLoop()}}/>
+            )}
 
-            <div style={{padding:"14px 18px",borderBottom:`1px solid ${M.line}`,display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
-              {imgsReady&&(!isPlaying
-                ?<button onClick={startPlay} style={{background:`linear-gradient(135deg,${M.red},#9A1028)`,color:"#fff",border:"none",borderRadius:"9px",padding:"9px 22px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"'Space Grotesk',sans-serif",letterSpacing:"-0.02em",boxShadow:"0 4px 20px rgba(197,24,58,.25)"}}>
-                  ▶ Reproduzir{video.hasAudio?" com narração":""}
-                </button>
-                :<button onClick={stopPlay} style={{background:M.raised,color:M.t1,border:`1px solid ${M.line}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>■ Parar</button>
-              )}
-              {images.length>0&&(
-                <button onClick={downloadVideo} disabled={downloading}
-                  style={{background:downloading?"transparent":"rgba(124,58,237,.12)",color:downloading?M.t3:"#A78BFA",border:`1px solid ${downloading?M.line:"rgba(124,58,237,.3)"}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:downloading?"not-allowed":"pointer",opacity:downloading?.6:1,fontFamily:"'Inter',sans-serif",letterSpacing:"-0.01em",transition:"all .15s"}}>
-                  {downloading?"Gerando...":"↓ Baixar .webm"}
-                </button>
-              )}
-              {video.hasAudio&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.green,fontWeight:500,letterSpacing:"0.02em",display:"flex",alignItems:"center",gap:"5px"}}>
-                <span style={{width:"6px",height:"6px",borderRadius:"50%",background:M.green,display:"inline-block",boxShadow:"0 0 6px rgba(5,150,105,.5)"}}/>
-                Narração ativa
-              </span>}
+            {/* Controls */}
+            <div style={{padding:"12px 16px",borderBottom:`1px solid ${M.line}`,display:"flex",flexDirection:"column",gap:"10px"}}>
+              {/* Seekbar */}
+              <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+                <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.t3,minWidth:"36px"}}>{fmt(audioCurrentTime)}</span>
+                <div style={{flex:1,height:"4px",background:M.line,borderRadius:"2px",cursor:"pointer",position:"relative"}}
+                  onClick={e=>{
+                    const rect=e.currentTarget.getBoundingClientRect()
+                    seekTo((e.clientX-rect.left)/rect.width)
+                  }}>
+                  <div style={{position:"absolute",top:0,left:0,height:"100%",width:`${seekPct*100}%`,background:M.red,borderRadius:"2px",transition:"width .08s linear"}}/>
+                  <div style={{position:"absolute",top:"50%",left:`${seekPct*100}%`,transform:"translate(-50%,-50%)",width:"10px",height:"10px",background:M.red,borderRadius:"50%",boxShadow:`0 0 6px ${M.red}`,transition:"left .08s linear"}}/>
+                </div>
+                <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.t3,minWidth:"36px",textAlign:"right"}}>{fmt(totalDur)}</span>
+              </div>
+
+              {/* Buttons row */}
+              <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+                {imgsReady&&audioReady&&(!isPlaying
+                  ?<button onClick={startPlay} style={{background:`linear-gradient(135deg,${M.red},#9A1028)`,color:"#fff",border:"none",borderRadius:"9px",padding:"9px 22px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"'Space Grotesk',sans-serif",letterSpacing:"-0.02em",boxShadow:"0 4px 20px rgba(197,24,58,.25)"}}>
+                    ▶ Reproduzir{video.hasAudio?" com narração":""}
+                  </button>
+                  :<button onClick={stopPlay} style={{background:M.raised,color:M.t1,border:`1px solid ${M.line}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>■ Parar</button>
+                )}
+                {images.length>0&&(
+                  <button onClick={downloadVideo} disabled={downloading}
+                    style={{background:downloading?"transparent":"rgba(124,58,237,.12)",color:downloading?M.t3:"#A78BFA",border:`1px solid ${downloading?M.line:"rgba(124,58,237,.3)"}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:downloading?"not-allowed":"pointer",opacity:downloading?.6:1,fontFamily:"'Inter',sans-serif",transition:"all .15s"}}>
+                    {downloading?"Gerando...":"↓ Baixar .webm"}
+                  </button>
+                )}
+                {isPlaying&&(
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.green,display:"flex",alignItems:"center",gap:"5px",marginLeft:"auto"}}>
+                    <span style={{width:"5px",height:"5px",borderRadius:"50%",background:M.green,display:"inline-block",animation:"pulse 1s ease-in-out infinite"}}/>
+                    Cena {currentScene+1}/{N}
+                  </span>
+                )}
+              </div>
             </div>
 
+            {/* Download progress */}
             {downloading&&(
-              <div style={{padding:"10px 18px",borderBottom:`1px solid ${M.line}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.t3,marginBottom:"6px"}}>
+              <div style={{padding:"10px 16px",borderBottom:`1px solid ${M.line}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.t3,marginBottom:"5px"}}>
                   <span>{dlLabel}</span><span>{dlPct}%</span>
                 </div>
                 <div style={{height:"3px",background:M.line,borderRadius:"2px",overflow:"hidden"}}>
@@ -1115,16 +1323,28 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
               </div>
             )}
 
+            {/* Scene strip */}
             {images.length>0&&(
-              <div style={{padding:"12px 18px"}}>
-                <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:M.t3,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"8px"}}>{N} cenas</div>
+              <div style={{padding:"12px 16px"}}>
+                <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:M.t3,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"8px"}}>{N} cenas — clique para pular</div>
                 <div style={{display:"flex",gap:"6px",overflowX:"auto",paddingBottom:"4px"}}>
                   {images.map((img:string,i:number)=>(
                     <div key={i}
-                      onClick={()=>{if(animRef.current)cancelAnimationFrame(animRef.current);setIsPlaying(false);setCurrentScene(i);if(canvasRef.current&&imgsReady)drawFrame(canvasRef.current.getContext("2d")!,i,0)}}
-                      style={{flexShrink:0,borderRadius:"8px",overflow:"hidden",cursor:"pointer",border:currentScene===i&&!isPlaying?`2px solid ${M.red}`:`2px solid ${M.line}`,transition:"border-color .12s",position:"relative",width:"90px",height:"56px"}}>
-                      <img src={img} alt="" style={{width:"90px",height:"56px",objectFit:"cover",filter:"brightness(0.5)"}}/>
-                      <div style={{position:"absolute",bottom:"3px",left:"5px",fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:"rgba(255,255,255,.7)",fontWeight:600}}>C{i+1}</div>
+                      onClick={()=>{
+                        cancelLoop(); isPlayingRef.current=false; setIsPlaying(false); setCurrentScene(i)
+                        // Seek audio to scene start
+                        if (audioRef.current && sceneTimingRef.current[i]) {
+                          audioRef.current.currentTime = sceneTimingRef.current[i].start
+                          setAudioCurrentTime(sceneTimingRef.current[i].start)
+                        }
+                        if (canvasRef.current&&imgsReady) drawFrame(canvasRef.current.getContext("2d")!,i,0)
+                      }}
+                      style={{flexShrink:0,borderRadius:"8px",overflow:"hidden",cursor:"pointer",border:currentScene===i?`2px solid ${M.red}`:`2px solid ${M.line}`,transition:"border-color .12s",position:"relative",width:"90px",height:"56px"}}>
+                      <img src={img} alt="" style={{width:"90px",height:"56px",objectFit:"cover",filter:currentScene===i?"brightness(0.65)":"brightness(0.4)"}}/>
+                      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:"4px 5px"}}>
+                        <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"8px",color:"rgba(255,255,255,.8)",fontWeight:700}}>C{i+1}</div>
+                        {scenes[i]?.text&&<div style={{fontSize:"7px",color:"rgba(255,255,255,.4)",lineHeight:1.2,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{scenes[i].text.substring(0,30)}</div>}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1135,7 +1355,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
               <div style={{padding:"36px",textAlign:"center",color:M.t3}}>
                 <div style={{fontSize:"32px",marginBottom:"12px",opacity:.2}}>🎬</div>
                 <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:"13px",fontWeight:700,color:M.t2,marginBottom:"6px",letterSpacing:"-0.02em"}}>Sem imagens neste vídeo</div>
-                <div style={{fontSize:"12px",lineHeight:1.7,fontFamily:"'Inter',sans-serif",color:M.t3}}>Gerado antes do novo pipeline.<br/>Gere um novo para imagens + narração + download.</div>
+                <div style={{fontSize:"12px",lineHeight:1.7,color:M.t3}}>Gere um novo vídeo para ter imagens + narração sincronizada.</div>
               </div>
             )}
           </div>}

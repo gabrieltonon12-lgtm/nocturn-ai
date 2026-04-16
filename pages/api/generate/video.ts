@@ -105,25 +105,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: 'gpt-4o',
-            max_tokens: 2000,
+            max_tokens: 2500,
             messages: [{
               role: 'system',
-              content: `Voce e roteirista de dark channels faceless. Crie roteiro em portugues brasileiro para: ${dMap[duration]}.
-Estilo: ${contentType}. Voz: ${vMap[voice]}.
-RETORNE APENAS JSON valido:
+              content: `Você é roteirista especialista em dark channels virais no YouTube.
+REGRA ABSOLUTA: O roteiro DEVE ser EXATAMENTE sobre o tema informado pelo usuário. Nunca desvie do assunto.
+Escreva em português brasileiro fluido, como narração de documentário.
+Estrutura: ${dMap[duration]}. Estilo: ${contentType}. Tom: ${vMap[voice]}.
+
+IMPORTANTE:
+- O campo "scenes" contém EXATAMENTE o texto que será narrado em cada cena (palavra por palavra como sairá do TTS)
+- Cada cena: 25-40 palavras, frases completas, sem marcações como [pausa] ou [música]
+- A narração deve ser contínua — cada scene.text é um trecho sequencial do roteiro
+- imageQuery em inglês para buscar imagem no Pexels que represente visualmente aquela cena
+
+RETORNE APENAS JSON válido, sem markdown:
 {
-  "title": "titulo clickbait misterioso max 70 chars",
-  "description": "descricao para publicacao max 250 chars com call to action",
+  "title": "título clickbait máximo 70 chars sobre o tema exato",
+  "description": "descrição para publicação máximo 250 chars com call to action",
   "tags": ["tag1","tag2","tag3","tag4","tag5"],
-  "narration": "texto completo da narracao sem marcacoes de cena, fluido, envolvente, em primeira pessoa, min 150 palavras",
   "scenes": [
-    {"text": "frase exata narrada nesta cena (20-30 palavras)", "imageQuery": "termo em ingles para busca de imagem dark no Pexels"},
-    {"text": "...", "imageQuery": "..."}
+    {"text": "texto exato narrado nesta cena sem pontuação de palco", "imageQuery": "english search term for dark pexels image"},
+    {"text": "continuação natural do trecho anterior...", "imageQuery": "..."}
   ]
-}`
+}`,
             }, {
               role: 'user',
-              content: `Dark channel sobre: ${prompt}`
+              content: `Crie o roteiro EXATAMENTE sobre este tema: ${prompt}`,
             }]
           })
         })
@@ -134,18 +142,17 @@ RETORNE APENAS JSON valido:
             title = p.title || title
             description = p.description || ''
             tags = p.tags || []
-            script = p.narration || ''
             scenes = p.scenes || []
+            // Use scenes as source of truth for narration — ensures audio matches subtitles
+            script = scenes.map((s: any) => s.text || '').join(' ')
           } catch { script = raw; title = prompt.substring(0,60) }
         }
       } catch(e) { console.error('OpenAI error:', e) }
     }
 
-    if (!script) {
-      script = `Voce esta prestes a descobrir a verdade sobre ${prompt}. O que voce vai ouvir agora e baseado em fatos reais que poucos conhecem. Prepare-se.`
-      scenes = [
-        { text: script, imageQuery: 'dark mysterious conspiracy' }
-      ]
+    if (!script || scenes.length === 0) {
+      script = `Você está prestes a descobrir a verdade sobre ${prompt}. O que você vai ouvir agora é baseado em fatos reais que poucos conhecem. Prepare-se para o que está por vir.`
+      scenes = [{ text: script, imageQuery: 'dark mysterious conspiracy revelation' }]
       tags = ['misterio', 'conspiracao', 'dark channel', 'verdade', 'faceless']
     }
 
