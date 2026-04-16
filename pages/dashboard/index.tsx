@@ -100,6 +100,7 @@ export default function Dashboard() {
   const [language, setLanguage] = useState('pt')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [referral, setReferral] = useState<any>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -113,6 +114,8 @@ export default function Dashboard() {
       .then(r => r.json()).then(d => setVideos(d.videos || []))
     fetch('/api/rewards', { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json()).then(d => setRewards(d.rewards || []))
+    fetch('/api/referral/stats', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json()).then(d => setReferral(d))
   }, [])
 
   useEffect(() => {
@@ -906,6 +909,58 @@ export default function Dashboard() {
                   </div>
                 </div>
 
+                {/* Referral Program */}
+                {referral && (
+                  <div style={{background:'linear-gradient(135deg,rgba(124,58,237,.08),rgba(197,24,58,.05))',border:`1px solid rgba(124,58,237,.25)`,borderRadius:'14px',padding:'22px 24px',marginBottom:'28px',boxShadow:shadow.card}}>
+                    <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'16px',flexWrap:'wrap'}}>
+                      <div>
+                        <div style={{fontFamily:F.head,fontSize:'15px',fontWeight:700,letterSpacing:'-0.025em',color:C.t1,marginBottom:'4px'}}>Programa de Indicação</div>
+                        <div style={{fontSize:'13px',color:C.t2,lineHeight:1.6}}>Indique amigos e ganhe <strong style={{color:C.violet}}>+5 créditos</strong> para cada cadastro realizado.</div>
+                      </div>
+                      <div style={{textAlign:'center',flexShrink:0}}>
+                        <div style={{fontFamily:F.head,fontSize:'28px',fontWeight:800,color:C.violet,lineHeight:1}}>{referral.referredCount || 0}</div>
+                        <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,marginTop:'2px'}}>indicados</div>
+                      </div>
+                    </div>
+                    <div style={{marginTop:'16px',display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+                      <div style={{flex:1,background:C.card,border:`1px solid ${C.line}`,borderRadius:'8px',padding:'9px 12px',fontFamily:F.mono,fontSize:'11px',color:C.t2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:'0'}}>
+                        {referral.referralLink || '...'}
+                      </div>
+                      <button onClick={()=>{navigator.clipboard.writeText(referral.referralLink||'');showToast('Link copiado!')}}
+                        style={{background:`linear-gradient(135deg,${C.violet},#6D28D9)`,color:'#fff',border:'none',borderRadius:'8px',padding:'9px 18px',fontSize:'12px',fontWeight:700,cursor:'pointer',fontFamily:F.head,flexShrink:0,boxShadow:'0 4px 16px rgba(124,58,237,.3)'}}>
+                        Copiar link
+                      </button>
+                    </div>
+                    {referral.creditsEarned > 0 && (
+                      <div style={{marginTop:'10px',fontFamily:F.mono,fontSize:'10px',color:C.green}}>✓ {referral.creditsEarned} créditos ganhos por indicações</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Credit history */}
+                {videos.length > 0 && (
+                  <div style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'14px',padding:'20px 22px',marginBottom:'28px',boxShadow:shadow.card}}>
+                    <div style={{fontFamily:F.head,fontSize:'14px',fontWeight:700,letterSpacing:'-0.025em',color:C.t1,marginBottom:'4px'}}>Histórico de Uso</div>
+                    <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,marginBottom:'16px'}}>{videos.length} crédito{videos.length!==1?'s':''} usado{videos.length!==1?'s':''}</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:'6px',maxHeight:'220px',overflowY:'auto'}}>
+                      {videos.slice(0,20).map((v:any,i:number) => (
+                        <div key={v.id||i} onClick={()=>setSelectedVideo(v)} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 12px',background:C.raised,border:`1px solid ${C.line}`,borderRadius:'8px',cursor:'pointer',transition:'border-color .15s'}}
+                          onMouseEnter={e=>e.currentTarget.style.borderColor=C.lineHi}
+                          onMouseLeave={e=>e.currentTarget.style.borderColor=C.line}>
+                          <div style={{width:'32px',height:'32px',borderRadius:'6px',overflow:'hidden',flexShrink:0,background:C.line}}>
+                            {v.images?.[0] && <img src={v.images[0]} alt="" style={{width:'100%',height:'100%',objectFit:'cover',filter:'brightness(.7)'}}/>}
+                          </div>
+                          <div style={{flex:1,overflow:'hidden'}}>
+                            <div style={{fontSize:'12px',color:C.t1,fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{v.title||'Sem título'}</div>
+                            <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,marginTop:'2px'}}>{v.createdAt?new Date(v.createdAt).toLocaleDateString('pt-BR'):''}</div>
+                          </div>
+                          <div style={{fontFamily:F.mono,fontSize:'9px',color:C.red,fontWeight:600,flexShrink:0}}>−1 crédito</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:'16px'}}>
                   {[
                     {n:'Starter',p:47,credits:20,url:PLAN_URLS.starter,color:C.green,features:['20 vídeos/mês','YouTube + TikTok','Roteiro GPT-4o','Voz IA PT-BR','Garantia 7 dias']},
@@ -1489,6 +1544,28 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                     {downloading?"Gerando...":"↓ Baixar .webm"}
                   </button>
                 )}
+                {canvasRef.current&&imgsReady&&(
+                  <button onClick={()=>{
+                    const c=canvasRef.current!
+                    const url=c.toDataURL("image/jpeg",0.92)
+                    const a=document.createElement("a");a.href=url
+                    a.download=(video.title||"thumbnail").replace(/[^a-zA-Z0-9]/g,"_").substring(0,40)+".jpg"
+                    a.click()
+                  }}
+                    style={{background:"rgba(217,119,6,.1)",color:"#D97706",border:"1px solid rgba(217,119,6,.3)",borderRadius:"9px",padding:"9px 16px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.background="rgba(217,119,6,.18)"}}
+                    onMouseLeave={e=>{e.currentTarget.style.background="rgba(217,119,6,.1)"}}>
+                    ↓ Thumbnail .jpg
+                  </button>
+                )}
+                <button onClick={()=>{
+                  const url=`${window.location.origin}/v/${video.id}`
+                  navigator.clipboard.writeText(url).then(()=>setCopied("share"))
+                  setTimeout(()=>setCopied(""),3000)
+                }}
+                  style={{background:copied==="share"?"rgba(5,150,105,.1)":"transparent",color:copied==="share"?M.green:M.t3,border:`1px solid ${copied==="share"?"rgba(5,150,105,.3)":M.line}`,borderRadius:"9px",padding:"9px 14px",fontSize:"12px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s",whiteSpace:"nowrap"}}>
+                  {copied==="share"?"✓ Link copiado":"↗ Compartilhar"}
+                </button>
                 {isPlaying&&(
                   <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.green,display:"flex",alignItems:"center",gap:"5px",marginLeft:"auto"}}>
                     <span style={{width:"5px",height:"5px",borderRadius:"50%",background:M.green,display:"inline-block",animation:"pulse 1s ease-in-out infinite"}}/>
@@ -1575,6 +1652,21 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                     onMouseEnter={e=>{e.currentTarget.style.borderColor=M.lineHi;e.currentTarget.style.color=M.t2}}
                     onMouseLeave={e=>{e.currentTarget.style.borderColor=M.line;e.currentTarget.style.color=M.t3}}>
                     ↓ .txt
+                  </button>
+                  <button onClick={()=>{
+                    // Generate SRT from scenes
+                    const sc = video.scenes||[]
+                    const dur = sc.length > 0 ? (video.audioDuration || sc.length * 5) : 30
+                    const secPerScene = dur / Math.max(sc.length,1)
+                    const pad = (n:number,l=2) => String(Math.floor(n)).padStart(l,'0')
+                    const toSrt = (s:number) => `${pad(s/3600)}:${pad((s%3600)/60)}:${pad(s%60)},000`
+                    const srt = sc.map((s:any,i:number) => `${i+1}\n${toSrt(i*secPerScene)} --> ${toSrt((i+1)*secPerScene)}\n${s.text||""}`).join("\n\n")
+                    const b=new Blob([srt],{type:"text/plain"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=(video.title||"legenda").replace(/[^a-zA-Z0-9]/g,"_").substring(0,40)+".srt";a.click();URL.revokeObjectURL(u)
+                  }}
+                    style={{background:"transparent",border:`1px solid ${M.line}`,color:M.t3,borderRadius:"6px",padding:"4px 10px",fontSize:"10px",cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",transition:"all .15s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor=M.lineHi;e.currentTarget.style.color=M.t2}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor=M.line;e.currentTarget.style.color=M.t3}}>
+                    ↓ .srt
                   </button>
                 </div>
               </div>

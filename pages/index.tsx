@@ -166,11 +166,22 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>NOCTURN.AI — Crie Dark Channels com IA em 3 Minutos</title>
-        <meta name="description" content="1 vídeo grátis ao criar conta. Roteiro, voz e edição automáticos — sem câmera, sem aparecer, sem experiência." />
+        <title>NOCTURN.AI — Crie Canais com IA em 3 Minutos</title>
+        <meta name="description" content="1 vídeo grátis ao criar conta. Roteiro, voz e imagens automáticos — sem câmera, sem aparecer. Dark channel, religioso, true crime, natureza e muito mais." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta property="og:title" content="NOCTURN.AI — Dark Channels com IA" />
-        <meta property="og:description" content="Você digita. A IA publica. Dark channel em menos de 3 minutos." />
+        <meta name="robots" content="index, follow" />
+        <meta name="keywords" content="dark channel ia, canal youtube ia, criar video com ia, faceless channel, nocturn ai, roteiro ia, tts ia" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://nocturn-ai.vercel.app" />
+        <meta property="og:title" content="NOCTURN.AI — Crie Canais Faceless com IA" />
+        <meta property="og:description" content="Você digita o tema. A IA escreve o roteiro, narra com voz realista e monta o vídeo. 1 vídeo grátis, sem cartão." />
+        <meta property="og:image" content="https://nocturn-ai.vercel.app/og-image.jpg" />
+        <meta property="og:locale" content="pt_BR" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="NOCTURN.AI — Crie Canais Faceless com IA" />
+        <meta name="twitter:description" content="Roteiro + voz + imagens em menos de 3 minutos. 1 vídeo grátis, sem cartão." />
+        <meta name="twitter:image" content="https://nocturn-ai.vercel.app/og-image.jpg" />
+        <link rel="canonical" href="https://nocturn-ai.vercel.app" />
       </Head>
 
       <style>{`

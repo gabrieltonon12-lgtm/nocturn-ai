@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   try {
     await ensureAdmin()
-    const { name, email, password, plan = 'starter' } = req.body
+    const { name, email, password, plan = 'starter', ref } = req.body
     if (!name || !email || !password) return res.status(400).json({ error: 'Nome, email e senha obrigatórios' })
     if (password.length < 6) return res.status(400).json({ error: 'Senha mínimo 6 caracteres' })
 
@@ -48,16 +48,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const hashed = await bcrypt.hash(password, 10)
+    const userId = generateId()
+    const referralCode = userId.substring(0, 8).toUpperCase()
     const user = {
-      id: generateId(), name, email,
+      id: userId, name, email,
       password: hashed,
       plan: 'free', credits: 1,  // 1 vídeo grátis para ativar o usuário
       role: 'user', active: true,
       verified: false,
       videoCount: 0,
+      referralCode,
+      referredBy: ref || null,
       createdAt: new Date().toISOString(),
     }
     users.push(user)
+
+    // Reward referrer +5 credits
+    if (ref) {
+      const referrerIdx = users.findIndex((u: any) => u.referralCode === ref)
+      if (referrerIdx !== -1) {
+        users[referrerIdx].credits = (users[referrerIdx].credits ?? 0) + 5
+      }
+    }
+
     await saveUsers(users)
 
     // Send verification email (async, don't block registration)

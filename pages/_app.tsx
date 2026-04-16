@@ -1,6 +1,7 @@
 import type { AppProps } from 'next/app'
 import { useEffect } from 'react'
 import { useRouter } from 'next/router'
+import { Analytics } from '@vercel/analytics/react'
 import '../styles/globals.css'
 
 declare global {
@@ -33,5 +34,10 @@ export default function App({ Component, pageProps }: AppProps) {
     return () => router.events.off('routeChangeComplete', handleRouteChange)
   }, [router.events])
 
-  return <Component {...pageProps} />
+  return (
+    <>
+      <Component {...pageProps} />
+      <Analytics />
+    </>
+  )
 }

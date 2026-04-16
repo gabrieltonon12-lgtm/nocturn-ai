@@ -254,12 +254,28 @@ export default function Admin() {
             {/* ── USERS ── */}
             {view === 'users' && (
               <div>
-                <div style={{ marginBottom: '16px' }}>
+                <div style={{ marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <input value={search} onChange={e => setSearch(e.target.value)}
                     placeholder="Buscar por nome ou email..."
-                    style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: '9px', padding: '10px 14px', color: C.t1, fontSize: '13px', outline: 'none', fontFamily: F.body, width: '320px', transition: 'border-color .15s' }}
+                    style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: '9px', padding: '10px 14px', color: C.t1, fontSize: '13px', outline: 'none', fontFamily: F.body, width: '280px', transition: 'border-color .15s' }}
                     onFocus={e => e.target.style.borderColor = C.red}
                     onBlur={e => e.target.style.borderColor = C.line} />
+                  <button onClick={() => {
+                    const cols = ['Nome', 'Email', 'Plano', 'Créditos', 'Vídeos', 'Status', 'Verificado', 'Desde']
+                    const rows = users.map(u => [
+                      u.name, u.email, u.plan || 'free', u.credits ?? 0, u.videoCount ?? 0,
+                      u.active ? 'Ativo' : 'Banido', u.verified ? 'Sim' : 'Não',
+                      u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : '',
+                    ])
+                    const csv = [cols, ...rows].map(r => r.map((v: any) => `"${v}"`).join(',')).join('\n')
+                    const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+                    const url = URL.createObjectURL(b)
+                    const a = document.createElement('a'); a.href = url
+                    a.download = `nocturn-usuarios-${new Date().toISOString().slice(0,10)}.csv`
+                    a.click(); URL.revokeObjectURL(url)
+                  }} style={{ background: C.gDim, border: `1px solid rgba(5,150,105,.3)`, color: C.green, borderRadius: '9px', padding: '10px 16px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: F.body, whiteSpace: 'nowrap' }}>
+                    ↓ Exportar CSV
+                  </button>
                 </div>
                 <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,.5)' }}>
                   <div style={{ overflowX: 'auto' }}>

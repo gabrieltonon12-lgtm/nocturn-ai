@@ -7,7 +7,7 @@ declare global { interface Window { fbq: any; ttq: any } }
 
 export default function Register() {
   const router = useRouter()
-  const { plan } = router.query
+  const { plan, ref } = router.query
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,7 +28,7 @@ export default function Register() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, plan: plan || 'starter' })
+        body: JSON.stringify({ name, email, password, plan: plan || 'starter', ref: ref || undefined })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao criar conta')
