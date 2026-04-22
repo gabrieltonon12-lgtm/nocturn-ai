@@ -2,6 +2,12 @@ node_modules
 .next
 .env
 .env.local
+.env.local.*
+.env*.local
 .data
 *.log
 .vercel
+.claude/settings.local.json
+tsconfig.tsbuildinfo
+*.md
+!README.md
