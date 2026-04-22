@@ -183,6 +183,13 @@ export default function Dashboard() {
   const [showConfetti, setShowConfetti] = useState(false)
   const [showFirstVideoSuccess, setShowFirstVideoSuccess] = useState(false)
   const [rewardToastMsg, setRewardToastMsg] = useState('')
+  const [lastGeneratedVideo, setLastGeneratedVideo] = useState<any>(null)
+  const [showUpsellModal, setShowUpsellModal] = useState(false)
+  const [pwCurrent, setPwCurrent] = useState('')
+  const [pwNew, setPwNew] = useState('')
+  const [pwLoading, setPwLoading] = useState(false)
+  const [pwMsg, setPwMsg] = useState('')
+  const [pwOk, setPwOk] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -287,11 +294,21 @@ export default function Dashboard() {
           u.credits = data.creditsRemaining
           localStorage.setItem('user', JSON.stringify(u))
           setUser((prev: any) => ({ ...prev, credits: data.creditsRemaining }))
+          setLastGeneratedVideo(data.video)
           if (data.video.runwayError) {
             console.error('Runway falhou:', data.video.runwayError)
             showToast(`Runway indisponível — usando imagens Pexels. Erro: ${data.video.runwayError}`, 'error')
           } else if (isFirstVideo) { setShowConfetti(true); setShowFirstVideoSuccess(true); setTimeout(()=>setShowConfetti(false),5000) }
-          else showToast('Vídeo gerado com sucesso! 🎉', 'success')
+          else {
+            showToast('Vídeo gerado com sucesso! 🎉', 'success')
+            // Show upsell for non-enterprise users after successful generation
+            const credLeft = data.creditsRemaining
+            const planMax = PLAN_CREDITS[data.user?.plan || user?.plan] || 20
+            const isNonEnterprise = (user?.plan || 'starter') !== 'enterprise'
+            if (isNonEnterprise && credLeft <= Math.floor(planMax * 0.3)) {
+              setTimeout(() => setShowUpsellModal(true), 3000)
+            }
+          }
           const rr = await fetch('/api/rewards', { headers: { Authorization: 'Bearer ' + token } })
           const rd = await rr.json()
           setRewards(rd.rewards || [])
@@ -363,11 +380,29 @@ export default function Dashboard() {
   const creditPct = maxCredits === 99999 ? 100 : Math.round(((user.credits ?? 0) / maxCredits) * 100)
   const eligibleRewards = rewards.filter(r => r.eligible)
 
+  const handleChangePassword = async () => {
+    if (!pwCurrent || !pwNew) return
+    setPwLoading(true); setPwMsg(''); setPwOk(false)
+    const token = localStorage.getItem('token') || ''
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+      })
+      const data = await res.json()
+      if (res.ok) { setPwMsg('Senha alterada com sucesso!'); setPwOk(true); setPwCurrent(''); setPwNew('') }
+      else setPwMsg(data.error || 'Erro ao alterar senha')
+    } catch { setPwMsg('Erro de conexão') }
+    setPwLoading(false)
+  }
+
   const NAV_ITEMS = [
     { id:'generator', icon:'◈', label: t('nav.generate'), badge:'IA', badgeColor: C.green, badgeBg: C.gDim },
     { id:'videos', icon:'▤', label: t('nav.library'), badge: videos.length > 0 ? String(videos.length) : undefined },
     { id:'rewards', icon:'◆', label: t('nav.rewards'), badge: eligibleRewards.length > 0 ? String(eligibleRewards.length) : undefined, badgeColor: C.red, badgeBg: C.redDim, badgeRed: true },
     { id:'billing', icon:'◎', label: t('nav.billing') },
+    { id:'settings', icon:'⚙', label: 'Configurações' },
   ]
 
   const planColor = user.plan === 'enterprise' ? C.violet : user.plan === 'pro' ? C.red : C.green
@@ -417,6 +452,7 @@ export default function Dashboard() {
       {/* ── Modals & overlays ── */}
       {showOnboarding && <OnboardingModal step={onboardingStep} onNext={()=>setOnboardingStep(s=>s+1)} onClose={()=>{setShowOnboarding(false);localStorage.setItem('onboarding_done','1')}} onGenerate={()=>{setShowOnboarding(false);localStorage.setItem('onboarding_done','1');setView('generator');setTimeout(()=>document.getElementById('prompt-textarea')?.focus(),200)}} C={C} F={F} shadow={shadow}/>}
       {showUpgradeModal && <UpgradeModal user={user} onClose={()=>setShowUpgradeModal(false)} onUpgrade={()=>{setShowUpgradeModal(false);setView('billing')}} C={C} F={F} shadow={shadow}/>}
+      {showUpsellModal && <PostGenUpsellModal user={user} onClose={()=>setShowUpsellModal(false)} onUpgrade={()=>{setShowUpsellModal(false);setView('billing')}} C={C} F={F} shadow={shadow}/>}
       {showConfetti && <ConfettiEffect />}
 
       {/* First-video success banner */}
@@ -587,7 +623,7 @@ export default function Dashboard() {
                 </button>
               )}
               <div style={{fontFamily:F.head,fontSize:'16px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1}}>
-                {view==='generator'?t('topbar.generate'):view==='videos'?t('topbar.videos'):view==='rewards'?t('topbar.rewards'):t('topbar.billing')}
+                {view==='generator'?t('topbar.generate'):view==='videos'?t('topbar.videos'):view==='rewards'?t('topbar.rewards'):view==='settings'?'Configurações':t('topbar.billing')}
               </div>
               {view === 'generator' && (
                 <span style={{fontFamily:F.mono,fontSize:'9px',background:C.gDim,border:'1px solid rgba(22,163,74,.2)',color:C.green,padding:'3px 8px',borderRadius:'9px',fontWeight:500,letterSpacing:'0.04em'}}>GPT-4o · OpenAI TTS · Pexels</span>
@@ -900,6 +936,64 @@ export default function Dashboard() {
                   </div>
                 )}
 
+                {/* Inline preview of last generated video */}
+                {lastGeneratedVideo && !generating && (
+                  <div style={{background:C.card,border:`1px solid rgba(22,163,74,.3)`,borderRadius:'14px',overflow:'hidden',boxShadow:shadow.card,marginBottom:'16px',animation:'fadeUp .4s ease'}}>
+                    <div style={{padding:'14px 20px',borderBottom:`1px solid ${C.line}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:`linear-gradient(135deg,rgba(22,163,74,.06),transparent)`}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                        <div style={{width:'8px',height:'8px',borderRadius:'50%',background:C.green,boxShadow:`0 0 8px rgba(22,163,74,.5)`}}/>
+                        <div style={{fontFamily:F.head,fontSize:'13px',fontWeight:700,color:C.t1,letterSpacing:'-0.02em'}}>Vídeo gerado!</div>
+                        <span style={{fontFamily:F.mono,fontSize:'9px',background:C.gDim,border:'1px solid rgba(22,163,74,.2)',color:C.green,padding:'2px 8px',borderRadius:'9px'}}>PRONTO</span>
+                      </div>
+                      <div style={{display:'flex',gap:'8px'}}>
+                        <button onClick={()=>setSelectedVideo(lastGeneratedVideo)}
+                          style={{background:C.red,color:'#fff',border:'none',borderRadius:'8px',padding:'7px 16px',fontSize:'12px',fontWeight:700,cursor:'pointer',fontFamily:F.head,boxShadow:shadow.red}}>
+                          Assistir →
+                        </button>
+                        <button onClick={()=>setLastGeneratedVideo(null)}
+                          style={{background:'transparent',border:`1px solid ${C.line}`,color:C.t3,borderRadius:'8px',padding:'7px 10px',fontSize:'16px',cursor:'pointer',lineHeight:1}}>
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{padding:'16px 20px',display:'flex',gap:'16px',alignItems:'flex-start',flexWrap:'wrap'}}>
+                      {/* Thumbnail */}
+                      <div onClick={()=>setSelectedVideo(lastGeneratedVideo)} style={{width:'140px',height:'90px',borderRadius:'10px',overflow:'hidden',flexShrink:0,background:C.raised,cursor:'pointer',position:'relative',border:`1px solid ${C.line}`}}>
+                        {lastGeneratedVideo.videoUrl
+                          ? <video src={lastGeneratedVideo.videoUrl} style={{width:'100%',height:'100%',objectFit:'cover'}} muted playsInline/>
+                          : lastGeneratedVideo.images?.[0]
+                          ? <img src={lastGeneratedVideo.images[0]} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                          : <div style={{width:'100%',height:'100%',background:`linear-gradient(135deg,${C.focus},${C.raised})`}}/>
+                        }
+                        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(9,9,11,.25)'}}>
+                          <div style={{width:'32px',height:'32px',borderRadius:'50%',background:'rgba(255,255,255,.9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',color:C.red}}>▶</div>
+                        </div>
+                      </div>
+                      {/* Info */}
+                      <div style={{flex:1,minWidth:'0'}}>
+                        <div style={{fontFamily:F.head,fontSize:'14px',fontWeight:700,color:C.t1,marginBottom:'6px',letterSpacing:'-0.02em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lastGeneratedVideo.title||'Sem título'}</div>
+                        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}}>
+                          {lastGeneratedVideo.hasAudio&&<span style={{fontFamily:F.mono,fontSize:'9px',padding:'2px 8px',borderRadius:'5px',background:C.gDim,border:'1px solid rgba(22,163,74,.2)',color:C.green,fontWeight:600}}>VOZ IA</span>}
+                          {lastGeneratedVideo.videoUrl&&<span style={{fontFamily:F.mono,fontSize:'9px',padding:'2px 8px',borderRadius:'5px',background:C.redDim,border:'1px solid rgba(110,86,207,.2)',color:C.red,fontWeight:600}}>RUNWAY MP4</span>}
+                          {lastGeneratedVideo.hasImages&&<span style={{fontFamily:F.mono,fontSize:'9px',padding:'2px 8px',borderRadius:'5px',background:C.vDim,border:`1px solid rgba(110,86,207,.15)`,color:C.violet,fontWeight:600}}>IMAGENS</span>}
+                        </div>
+                        <div style={{display:'flex',gap:'8px'}}>
+                          <button onClick={()=>setSelectedVideo(lastGeneratedVideo)}
+                            className="btn-primary"
+                            style={{background:C.green,color:'#fff',border:'none',borderRadius:'8px',padding:'8px 18px',fontSize:'12px',fontWeight:700,cursor:'pointer',fontFamily:F.head}}>
+                            Abrir player completo
+                          </button>
+                          <button onClick={()=>{setView('generator');setLastGeneratedVideo(null)}}
+                            className="btn-ghost"
+                            style={{background:'transparent',border:`1px solid ${C.line}`,color:C.t2,borderRadius:'8px',padding:'8px 14px',fontSize:'12px',cursor:'pointer',fontFamily:F.body}}>
+                            Gerar outro
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Recent videos */}
                 {videos.length > 0 && (
                   <div style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'14px',overflow:'hidden',boxShadow:shadow.card}}>
@@ -1179,12 +1273,127 @@ export default function Dashboard() {
               </div>
             )}
 
+            {/* ── SETTINGS ─────────────────────────────────────────── */}
+            {view === 'settings' && (
+              <div style={{maxWidth:'640px',display:'flex',flexDirection:'column',gap:'20px'}}>
+
+                {/* Profile info */}
+                <div style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'14px',padding:'24px',boxShadow:shadow.card}}>
+                  <div style={{fontFamily:F.head,fontSize:'15px',fontWeight:700,letterSpacing:'-0.025em',color:C.t1,marginBottom:'4px'}}>Perfil</div>
+                  <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,marginBottom:'20px'}}>Informações da sua conta</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
+                    {[
+                      {label:'Nome',value:user.name},
+                      {label:'Email',value:user.email},
+                      {label:'Plano',value:planLabel},
+                      {label:'Créditos',value:maxCredits===99999?'Ilimitados':`${Math.min(user.credits??0,maxCredits)} restantes`},
+                      {label:'Membro desde',value:user.createdAt?new Date(user.createdAt).toLocaleDateString('pt-BR'):'—'},
+                    ].map(row=>(
+                      <div key={row.label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:`1px solid ${C.line}`}}>
+                        <span style={{fontFamily:F.mono,fontSize:'10px',color:C.t3,textTransform:'uppercase',letterSpacing:'0.08em'}}>{row.label}</span>
+                        <span style={{fontSize:'13px',fontWeight:500,color:C.t1}}>{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Change password */}
+                <div style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'14px',padding:'24px',boxShadow:shadow.card}}>
+                  <div style={{fontFamily:F.head,fontSize:'15px',fontWeight:700,letterSpacing:'-0.025em',color:C.t1,marginBottom:'4px'}}>Alterar senha</div>
+                  <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,marginBottom:'20px'}}>Mínimo 6 caracteres</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
+                    {[
+                      {label:'Senha atual',val:pwCurrent,set:setPwCurrent,id:'pw-current'},
+                      {label:'Nova senha',val:pwNew,set:setPwNew,id:'pw-new'},
+                    ].map(f=>(
+                      <div key={f.id} style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                        <label style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,textTransform:'uppercase',letterSpacing:'0.08em'}}>{f.label}</label>
+                        <input id={f.id} type="password" value={f.val} onChange={e=>f.set(e.target.value)}
+                          style={{background:C.raised,border:`1px solid ${C.line}`,borderRadius:'8px',padding:'10px 14px',color:C.t1,fontSize:'14px',outline:'none',fontFamily:F.body,transition:'border-color .15s'}}
+                          onFocus={e=>e.target.style.borderColor=C.red}
+                          onBlur={e=>e.target.style.borderColor=C.line}
+                          placeholder="••••••••"
+                        />
+                      </div>
+                    ))}
+                    {pwMsg && (
+                      <div style={{padding:'10px 14px',borderRadius:'8px',fontSize:'13px',fontWeight:500,background:pwOk?C.gDim:'#FEE2E2',border:`1px solid ${pwOk?'rgba(22,163,74,.25)':'rgba(220,38,38,.25)'}`,color:pwOk?C.green:'#DC2626'}}>
+                        {pwMsg}
+                      </div>
+                    )}
+                    <button onClick={handleChangePassword} disabled={pwLoading||!pwCurrent||!pwNew}
+                      className="btn-primary"
+                      style={{background:pwLoading||!pwCurrent||!pwNew?C.layer:C.red,color:pwLoading||!pwCurrent||!pwNew?C.t3:'#fff',border:'none',borderRadius:'9px',padding:'11px',fontSize:'13px',fontWeight:700,cursor:pwLoading||!pwCurrent||!pwNew?'not-allowed':'pointer',fontFamily:F.head,boxShadow:pwLoading||!pwCurrent||!pwNew?'none':shadow.red,letterSpacing:'-0.02em'}}>
+                      {pwLoading?'Salvando...':'Salvar nova senha'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Danger zone */}
+                <div style={{background:C.card,border:'1px solid rgba(220,38,38,.2)',borderRadius:'14px',padding:'24px',boxShadow:shadow.card}}>
+                  <div style={{fontFamily:F.head,fontSize:'15px',fontWeight:700,letterSpacing:'-0.025em',color:'#DC2626',marginBottom:'4px'}}>Zona de perigo</div>
+                  <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3,marginBottom:'16px'}}>Ações irreversíveis</div>
+                  <div style={{fontSize:'13px',color:C.t2,lineHeight:1.7,marginBottom:'16px'}}>
+                    Para encerrar sua conta e excluir seus dados (LGPD Art. 18), envie um email para{' '}
+                    <a href="mailto:suporte@nocturn-ai.vercel.app" style={{color:C.red,fontWeight:600}}>suporte@nocturn-ai.vercel.app</a>{' '}
+                    com o assunto <strong style={{color:C.t1}}>"Excluir minha conta"</strong>.
+                  </div>
+                  <button onClick={logout}
+                    style={{background:'transparent',border:'1px solid rgba(220,38,38,.3)',color:'#DC2626',borderRadius:'9px',padding:'9px 20px',fontSize:'12px',fontWeight:600,cursor:'pointer',fontFamily:F.body,transition:'background .15s'}}
+                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='rgba(220,38,38,.06)'}
+                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='transparent'}>
+                    Sair da conta
+                  </button>
+                </div>
+
+              </div>
+            )}
+
           </div>
         </div>
       </div>
 
       {selectedVideo && <VideoPlayerModal video={selectedVideo} onClose={() => setSelectedVideo(null)}/>}
     </>
+  )
+}
+
+// ── POST-GENERATION UPSELL MODAL ─────────────────────────────────────────────
+function PostGenUpsellModal({user, onClose, onUpgrade, C, F, shadow}: any) {
+  const plan = user?.plan || 'starter'
+  const nextPlan = plan === 'starter' ? 'Pro' : 'Enterprise'
+  const nextCredits = plan === 'starter' ? 100 : '∞'
+  const nextPrice = plan === 'starter' ? 'R$97/mês' : 'R$297/mês'
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(9,9,11,.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000,padding:'16px',backdropFilter:'blur(8px)',animation:'fadeIn .2s ease'}}>
+      <div style={{background:C.void,border:`1px solid rgba(110,86,207,.3)`,borderRadius:'20px',width:'100%',maxWidth:'420px',padding:'32px',boxShadow:shadow.modal,animation:'scaleIn .25s ease'}}>
+        <div style={{textAlign:'center',marginBottom:'24px'}}>
+          <div style={{fontSize:'44px',marginBottom:'12px',lineHeight:1}}>🚀</div>
+          <div style={{fontFamily:F.head,fontSize:'20px',fontWeight:700,letterSpacing:'-0.03em',color:C.t1,marginBottom:'8px'}}>Seu vídeo está pronto!</div>
+          <div style={{fontSize:'14px',color:C.t2,lineHeight:1.7,marginBottom:'16px'}}>
+            Você gerou mais um vídeo incrível. Seus créditos estão acabando — faça upgrade para continuar sem interrupções.
+          </div>
+          <div style={{background:C.layer,border:`1px solid rgba(110,86,207,.25)`,borderRadius:'12px',padding:'16px 20px',marginBottom:'8px',textAlign:'left'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <div style={{fontFamily:F.mono,fontSize:'10px',color:C.red,fontWeight:700,letterSpacing:'0.06em',marginBottom:'4px'}}>{nextPlan.toUpperCase()}</div>
+                <div style={{fontSize:'13px',color:C.t2,lineHeight:1.5}}>{nextCredits} vídeos/mês · Todos os formatos · Suporte prioritário</div>
+              </div>
+              <div style={{fontFamily:F.head,fontSize:'22px',fontWeight:800,color:C.t1,flexShrink:0,marginLeft:'16px'}}>{nextPrice}</div>
+            </div>
+          </div>
+          <div style={{fontFamily:F.mono,fontSize:'9px',color:C.green,fontWeight:600,letterSpacing:'0.04em'}}>✓ GARANTIA DE 7 DIAS · SEM RISCO</div>
+        </div>
+        <button onClick={onUpgrade}
+          style={{width:'100%',background:`linear-gradient(135deg,${C.red},${C.violet})`,color:'#fff',border:'none',borderRadius:'10px',padding:'13px',fontSize:'14px',fontWeight:700,cursor:'pointer',fontFamily:F.head,letterSpacing:'-0.02em',boxShadow:shadow.red,marginBottom:'10px'}}>
+          Fazer upgrade para {nextPlan} →
+        </button>
+        <button onClick={onClose}
+          style={{width:'100%',background:'transparent',color:C.t3,border:'none',fontSize:'13px',cursor:'pointer',fontFamily:F.body,padding:'6px'}}>
+          Continuar no plano atual
+        </button>
+      </div>
+    </div>
   )
 }
 

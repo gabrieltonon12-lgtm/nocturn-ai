@@ -1,10 +1,31 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { createHmac } from 'crypto'
 import { getUsers, saveUser, generateId, ensureAdmin } from '../../../lib/db'
 
-const FB_PIXEL_ID = '1253914883109476'
-const FB_ACCESS_TOKEN = 'EAASpHpI4sXABRLt0ZBKS6oKZB0btCx9f0zcSZAM1yV1FmYYMtIjBNf8Y7ZCEJDYTS5JQJnzZAUtvt5YKU5obJZCwOOwq0RZA5IEtkyffgEpzPyZAVYWUiWlzoQWtPU8tD1JaAeUEriQajaYqpKUAFCQcBzUWdAubNZCieFIWZCZAljLzZAC1PNeR59zNzQ8Jx6n9ZAQZDZD'
-const TIKTOK_PIXEL_ID = 'D7END4RC77U8N8PUBHCG'
-const TIKTOK_ACCESS_TOKEN = '2417bf01ceeb0d33507135be36acfe37cc3e7899'
+const FB_PIXEL_ID      = process.env.FB_PIXEL_ID      || '1253914883109476'
+const FB_ACCESS_TOKEN  = process.env.FB_ACCESS_TOKEN  || ''
+const TIKTOK_PIXEL_ID  = process.env.TIKTOK_PIXEL_ID  || 'D7END4RC77U8N8PUBHCG'
+const TIKTOK_ACCESS_TOKEN = process.env.TIKTOK_ACCESS_TOKEN || ''
+
+// Cakto signs every webhook with HMAC-SHA256 using your webhook secret.
+// Set CAKTO_WEBHOOK_SECRET in Vercel env vars — get it from Cakto dashboard.
+function verifyCaktoSignature(req: NextApiRequest, body: string): boolean {
+  const secret = process.env.CAKTO_WEBHOOK_SECRET
+  if (!secret) {
+    console.warn('[cakto] CAKTO_WEBHOOK_SECRET not set — skipping signature check')
+    return true
+  }
+  const sig = req.headers['x-cakto-signature'] as string
+    || req.headers['x-webhook-signature'] as string
+    || req.headers['x-signature'] as string
+    || ''
+  if (!sig) {
+    console.warn('[cakto] No signature header found')
+    return false
+  }
+  const expected = createHmac('sha256', secret).update(body).digest('hex')
+  return sig === expected || sig === `sha256=${expected}`
+}
 
 async function fireFacebookPurchase(email: string, value: number, plan: string) {
   try {
@@ -129,11 +150,26 @@ async function sendWelcomeEmail(email: string, name: string, plan: string, passw
   } catch(e) { console.error('Email error:', e) }
 }
 
+export const config = { api: { bodyParser: false } }
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   try {
+    // Read raw body for HMAC verification
+    const rawBody = await new Promise<string>((resolve, reject) => {
+      let data = ''
+      req.on('data', chunk => { data += chunk })
+      req.on('end', () => resolve(data))
+      req.on('error', reject)
+    })
+
+    if (!verifyCaktoSignature(req, rawBody)) {
+      console.error('[cakto] Invalid signature — request rejected')
+      return res.status(401).json({ error: 'Invalid signature' })
+    }
+
     await ensureAdmin()
-    const p = req.body
+    const p = JSON.parse(rawBody || '{}')
     const event = (p.event || p.type || p.status || '').toLowerCase()
     const email = p.customer?.email || p.buyer?.email || p.email || ''
     const name = p.customer?.name || p.buyer?.name || email.split('@')[0] || 'Usuário'

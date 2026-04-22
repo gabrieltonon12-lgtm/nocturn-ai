@@ -4,7 +4,33 @@ import { verifyToken } from '../../../lib/auth'
 
 export const config = { maxDuration: 300 }
 import RunwayML from '@runwayml/sdk'
+import { put } from '@vercel/blob'
 import { getUsers, saveUser, saveVideo, generateId, ensureAdmin } from '../../../lib/db'
+
+// Downloads a Runway signed URL and re-uploads to Vercel Blob for permanent storage.
+// Falls back to returning the original URL if BLOB_READ_WRITE_TOKEN is not set.
+async function persistVideo(runwayUrl: string, videoId: string): Promise<string> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN
+  if (!token) {
+    console.warn('[blob] BLOB_READ_WRITE_TOKEN not set — video URL will expire')
+    return runwayUrl
+  }
+  try {
+    const res = await fetch(runwayUrl)
+    if (!res.ok) throw new Error(`Failed to download Runway video: ${res.status}`)
+    const blob = await res.blob()
+    const { url } = await put(`videos/${videoId}.mp4`, blob, {
+      access: 'public',
+      token,
+      contentType: 'video/mp4',
+    })
+    console.log('[blob] Video persisted:', url)
+    return url
+  } catch (e) {
+    console.error('[blob] Upload failed, using Runway URL:', e)
+    return runwayUrl
+  }
+}
 
 // OpenAI TTS voices
 const OPENAI_VOICES: Record<string,string> = {
@@ -252,7 +278,9 @@ RETORNE APENAS JSON válido, sem markdown:
     try {
       const visualQueries = scenes.slice(0, 3).map(s => s.imageQuery).join(', ')
       const runwayPrompt = `Cinematic b-roll video about: ${prompt}. Visual style: ${visualQueries}. High quality, dramatic lighting, smooth camera movement.`
-      runwayVideoUrl = await generateRunwayVideo(runwayPrompt, format)
+      const tempUrl = await generateRunwayVideo(runwayPrompt, format)
+      const videoId = generateId()
+      runwayVideoUrl = await persistVideo(tempUrl, videoId)
       console.log('Runway vídeo gerado:', runwayVideoUrl)
     } catch (e: any) {
       runwayError = e?.message || 'Erro desconhecido no Runway'

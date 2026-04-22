@@ -188,7 +188,6 @@ export default function Login() {
           position: 'relative',
           overflow: 'hidden',
         }} className="hide-sm">
-          {/* Decorative circles */}
           <div style={{position:'absolute',top:'-80px',right:'-80px',width:'400px',height:'400px',borderRadius:'50%',background:'rgba(255,255,255,.06)',pointerEvents:'none'}}/>
           <div style={{position:'absolute',bottom:'-60px',left:'-60px',width:'300px',height:'300px',borderRadius:'50%',background:'rgba(255,255,255,.04)',pointerEvents:'none'}}/>
 
@@ -201,7 +200,6 @@ export default function Login() {
               Roteiro, voz e vídeo gerados automaticamente em menos de 3 minutos. Sem aparecer, sem câmera.
             </p>
 
-            {/* Stats */}
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'16px'}}>
               {[
                 {val:'10k+',label:'Criadores'},

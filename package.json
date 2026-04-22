@@ -11,6 +11,7 @@
     "@runwayml/sdk": "^3.20.0",
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/blob": "^2.3.3",
     "bcryptjs": "^2.4.3",
     "i18next": "^26.0.5",
     "i18next-browser-languagedetector": "^8.2.1",
