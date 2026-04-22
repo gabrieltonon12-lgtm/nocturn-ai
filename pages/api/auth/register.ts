@@ -1,5 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
+﻿import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
+import { verifyToken } from '../../../lib/auth'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { Redis } from '@upstash/redis'
@@ -77,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await redis.set(`verify:${verifyToken}`, email, { ex: 86400 }) // 24h TTL
     sendVerificationEmail(email, name, verifyToken).catch(() => {})
 
-    const secret = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
+    const secret = process.env.JWT_SECRET!
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, plan: user.plan }, secret, { expiresIn: '30d' })
 
     res.status(201).json({ token, user: { id:user.id, name:user.name, email:user.email, plan:user.plan, credits:user.credits, role:user.role, verified:false } })

@@ -12,9 +12,23 @@ export default function Document() {
   return (
     <Html lang="pt-BR">
       <Head>
+        {/* Favicon */}
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="shortcut icon" href="/favicon.svg" />
+        <meta name="theme-color" content="#080b10" />
+
+        {/* Default SEO / OG */}
+        <meta property="og:site_name" content="NOCTURN.AI" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://nocturn-ai.vercel.app/og-image.svg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://nocturn-ai.vercel.app/og-image.svg" />
+
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
         {/* Facebook Pixel */}
         <script dangerouslySetInnerHTML={{ __html: `

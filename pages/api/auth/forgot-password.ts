@@ -38,8 +38,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         method: 'POST',
         headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: 'NOCTURN.AI <noreply@sonorem.com>',
-          reply_to: 'suporte@sonorem.com',
+          from: 'NOCTURN.AI <noreply@nocturn-ai.vercel.app>',
+          reply_to: 'suporte@nocturn-ai.vercel.app',
           to: [user.email],
           subject: '🔑 Redefinir senha — NOCTURN.AI',
           html: `<!DOCTYPE html>

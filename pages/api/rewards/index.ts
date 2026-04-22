@@ -1,5 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
+﻿import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
+import { verifyToken } from '../../../lib/auth'
 import { getUsers, saveUser, getVideos, ensureAdmin } from '../../../lib/db'
 
 // Sistema de Rewards — economia balanceada
@@ -23,7 +24,7 @@ const MILESTONES = [
 const MAX_BONUS_CREDITS_PER_MONTH = 2
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const secret = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
+  const secret = process.env.JWT_SECRET!
   
   try {
     await ensureAdmin()

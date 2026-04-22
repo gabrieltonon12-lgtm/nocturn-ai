@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "generate": "Generate Video",
+    "library": "Library",
+    "rewards": "Rewards",
+    "billing": "Subscription",
+    "admin": "Admin Panel",
+    "logout": "Sign Out",
+    "menu": "Menu"
+  },
+  "topbar": {
+    "generate": "Generate Video",
+    "videos": "Library",
+    "rewards": "Rewards",
+    "billing": "Subscription"
+  },
+  "stats": {
+    "videos": "Videos Generated",
+    "credits": "Credits",
+    "plan": "Plan",
+    "videos_sub": "total in library",
+    "credits_unlimited": "unlimited",
+    "credits_sub": "of {{max}} available",
+    "plan_sub": "current plan"
+  },
+  "gen": {
+    "title": "Video Agent",
+    "subtitle": "Script → Voice → Images → Player",
+    "content_type": "Content Type",
+    "duration": "Duration",
+    "format": "Format",
+    "language": "Language",
+    "topics": "Popular Topics",
+    "prompt_label": "Prompt / Video Topic",
+    "prompt_placeholder": "Ex: A documentary about secret societies that control the world...",
+    "voice": "AI Voice",
+    "platforms": "Platforms",
+    "cta": "Generate Video with AI →",
+    "cta_with_script": "Generate with this script →",
+    "cta_generating": "Generating...",
+    "preview_script": "👁 Preview script",
+    "preview_loading": "Generating script...",
+    "script_title": "Generated Script — Edit before generating",
+    "script_sub": "{{n}} scenes · click generate when ready",
+    "recent_title": "Recently Generated",
+    "recent_sub_one": "{{n}} video total",
+    "recent_sub_other": "{{n}} videos total",
+    "view_all": "View all →",
+    "onboarding_title": "You have 1 free credit!",
+    "onboarding_desc": "Generate your first video now — no credit card needed.",
+    "onboarding_cta": "Generate now →",
+    "upgrade_title": "Your free credit was used!",
+    "upgrade_desc": "Upgrade to keep generating viral videos every day.",
+    "upgrade_cta": "See plans →"
+  },
+  "lib": {
+    "title": "Library",
+    "sub_one": "{{n}} video generated",
+    "sub_other": "{{n}} videos generated",
+    "empty_title": "No videos yet",
+    "empty_desc": "Generate your first video now.",
+    "new_video": "+ New Video",
+    "search": "Search videos...",
+    "watch": "Watch →"
+  },
+  "rewards": {
+    "title": "Rewards System",
+    "desc": "Complete milestones by generating videos and accumulating views. Earn up to <strong>2 bonus credits per month</strong>.",
+    "report_title": "Report Views",
+    "report_desc": "Publish on YouTube/TikTok and report your views to unlock milestones.",
+    "no_videos": "Generate videos first.",
+    "views_btn": "+ Views",
+    "save": "Save",
+    "claimed": "Redeemed ✓",
+    "claim_credit": "Redeem +{{n}} credit",
+    "claim_badge": "Redeem Badge",
+    "claiming": "Redeeming...",
+    "progress": "Progress",
+    "milestone_views": "Views milestone",
+    "milestone_creation": "Creation milestone",
+    "views_saved": "Views recorded!"
+  },
+  "billing": {
+    "title": "Subscription",
+    "note": "1 credit = 1 complete video · script + voice + images + player · renews monthly",
+    "referral_title": "Referral Program",
+    "referral_desc": "Refer friends and earn <strong>+5 credits</strong> for each sign-up.",
+    "referral_count": "referred",
+    "referral_copy": "Copy link",
+    "referral_credits": "✓ {{n}} credits earned from referrals",
+    "history_title": "Usage History",
+    "history_sub_one": "{{n}} credit used",
+    "history_sub_other": "{{n}} credits used",
+    "current_plan": "Current plan ✓",
+    "subscribe": "Subscribe to {{name}} →",
+    "per_month": "/mo",
+    "currency": "$",
+    "credits_month": "credits / month",
+    "most_popular": "MOST POPULAR",
+    "plans": {
+      "starter": { "price": "9", "credits": 20 },
+      "pro": { "price": "19", "credits": 100 },
+      "enterprise": { "price": "59", "credits": 999 }
+    }
+  },
+  "credits": {
+    "label": "Credits",
+    "unlimited": "∞",
+    "used": "{{used}} of {{max}} used",
+    "low": "Low credits — upgrade →"
+  },
+  "common": {
+    "loading": "Loading...",
+    "online": "online",
+    "language": "Language",
+    "copy_link": "Link copied!",
+    "close": "Close",
+    "cancel": "Cancel"
+  },
+  "voice": {
+    "masculine": "Deep Male (EN-US)",
+    "feminine": "Mysterious Female (EN-US)",
+    "neutral": "Neutral (EN-US)",
+    "asmr": "Whispered (ASMR)"
+  },
+  "content_type": {
+    "faceless": "Faceless / Dark Channel",
+    "educational": "Educational / Documentary",
+    "inspirational": "Inspirational / Motivational",
+    "religious": "Religious / Spiritual",
+    "news": "News / Current Events",
+    "mystery": "Mystery & Conspiracies",
+    "truecrime": "True Crime",
+    "finance": "Finance / Money",
+    "nature": "Nature / Travel",
+    "sports": "Sports / Entertainment",
+    "food": "Food / Gastronomy",
+    "horror": "Horror & Creepypasta",
+    "asmr": "ASMR / Relaxation"
+  },
+  "duration": {
+    "short": "Short (up to 1 min)",
+    "long": "Long (1 min to 3 min)"
+  },
+  "format": {
+    "landscape": "Landscape 16:9 — YouTube",
+    "portrait": "Portrait 9:16 — Shorts / TikTok"
+  }
+}

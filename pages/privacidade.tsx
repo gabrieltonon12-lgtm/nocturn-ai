@@ -76,7 +76,7 @@ export default function Privacidade() {
                 <li>Revogar consentimento para comunicações de marketing</li>
                 <li>Portabilidade dos seus dados</li>
               </ul>
-              <p style={{ marginTop:'12px' }}>Para exercer estes direitos: <strong style={{ color:S.t1 }}>suporte@sonorem.com</strong></p>
+              <p style={{ marginTop:'12px' }}>Para exercer estes direitos: <strong style={{ color:S.t1 }}>suporte@nocturn-ai.vercel.app</strong></p>
             </Section>
 
             <Section title="7. Cookies">
@@ -84,7 +84,7 @@ export default function Privacidade() {
             </Section>
 
             <Section title="8. Contato">
-              <p>Dúvidas sobre privacidade: <strong style={{ color:S.t1 }}>suporte@sonorem.com</strong></p>
+              <p>Dúvidas sobre privacidade: <strong style={{ color:S.t1 }}>suporte@nocturn-ai.vercel.app</strong></p>
             </Section>
           </div>
 

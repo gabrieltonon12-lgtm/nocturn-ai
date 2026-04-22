@@ -1,5 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
+﻿import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
+import { verifyToken } from '../../../lib/auth'
 import bcrypt from 'bcryptjs'
 import { getUsers, ensureAdmin } from '../../../lib/db'
 
@@ -19,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const valid = await bcrypt.compare(password, user.password)
     if (!valid) return res.status(401).json({ error: 'Email ou senha incorretos' })
     
-    const secret = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
+    const secret = process.env.JWT_SECRET!
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, secret, { expiresIn: '30d' })
     
     res.status(200).json({

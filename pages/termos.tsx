@@ -76,7 +76,7 @@ export default function Termos() {
             </Section>
 
             <Section title="10. Contato">
-              <p>Para dúvidas sobre estes termos: <strong style={{ color:S.t1 }}>suporte@sonorem.com</strong></p>
+              <p>Para dúvidas sobre estes termos: <strong style={{ color:S.t1 }}>suporte@nocturn-ai.vercel.app</strong></p>
             </Section>
           </div>
 

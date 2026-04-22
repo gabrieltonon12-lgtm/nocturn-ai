@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { Analytics } from '@vercel/analytics/react'
 import '../styles/globals.css'
+import '../lib/i18n'
 
 declare global {
   interface Window { fbq: any; ttq: any }

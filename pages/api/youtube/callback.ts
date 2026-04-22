@@ -1,5 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
+﻿import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
+import { verifyToken } from '../../../lib/auth'
 import { getUsers, saveUser } from '../../../lib/db'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Verify JWT to find the user
-    const secret = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
+    const secret = process.env.JWT_SECRET!
     let decoded: any
     try { decoded = jwt.verify(String(token), secret) }
     catch { return res.redirect('/dashboard?youtube_error=invalid_token') }

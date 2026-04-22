@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "generate": "Gerar Vídeo",
+    "library": "Biblioteca",
+    "rewards": "Rewards",
+    "billing": "Assinatura",
+    "admin": "Painel Admin",
+    "logout": "Sair",
+    "menu": "Menu"
+  },
+  "topbar": {
+    "generate": "Gerar Vídeo",
+    "videos": "Biblioteca",
+    "rewards": "Rewards",
+    "billing": "Assinatura"
+  },
+  "stats": {
+    "videos": "Vídeos Gerados",
+    "credits": "Créditos",
+    "plan": "Plano",
+    "videos_sub": "total na biblioteca",
+    "credits_unlimited": "ilimitados",
+    "credits_sub": "de {{max}} disponíveis",
+    "plan_sub": "plano atual"
+  },
+  "gen": {
+    "title": "Agente de Vídeo",
+    "subtitle": "Roteiro → Voz → Imagens → Player",
+    "content_type": "Tipo de Conteúdo",
+    "duration": "Duração",
+    "format": "Formato",
+    "language": "Idioma",
+    "topics": "Temas populares",
+    "prompt_label": "Prompt / Tema do Vídeo",
+    "prompt_placeholder": "Ex: Um documentário sobre sociedades secretas que controlam o mundo...",
+    "voice": "Voz IA",
+    "platforms": "Plataformas",
+    "cta": "Gerar Vídeo com IA →",
+    "cta_with_script": "Gerar com este roteiro →",
+    "cta_generating": "Gerando...",
+    "preview_script": "👁 Ver roteiro antes",
+    "preview_loading": "Gerando roteiro...",
+    "script_title": "Roteiro Gerado — Edite antes de gerar o vídeo",
+    "script_sub": "{{n}} cenas · clique em gerar quando estiver pronto",
+    "recent_title": "Gerados Recentemente",
+    "recent_sub_one": "{{n}} vídeo no total",
+    "recent_sub_other": "{{n}} vídeos no total",
+    "view_all": "Ver todos →",
+    "onboarding_title": "Você tem 1 crédito grátis!",
+    "onboarding_desc": "Gere seu primeiro vídeo agora — sem precisar de cartão.",
+    "onboarding_cta": "Gerar agora →",
+    "upgrade_title": "Seu crédito grátis foi usado!",
+    "upgrade_desc": "Faça upgrade para continuar gerando vídeos virais todos os dias.",
+    "upgrade_cta": "Ver planos →"
+  },
+  "lib": {
+    "title": "Biblioteca",
+    "sub_one": "{{n}} vídeo gerado",
+    "sub_other": "{{n}} vídeos gerados",
+    "empty_title": "Nenhum vídeo ainda",
+    "empty_desc": "Gere seu primeiro vídeo agora.",
+    "new_video": "+ Novo Vídeo",
+    "search": "Buscar vídeos...",
+    "watch": "Assistir →"
+  },
+  "rewards": {
+    "title": "Sistema de Rewards",
+    "desc": "Complete milestones gerando vídeos e acumulando views. Ganhe até <strong>2 créditos bônus por mês</strong>.",
+    "report_title": "Reportar Views",
+    "report_desc": "Publique no YouTube/TikTok e reporte as views para desbloquear milestones.",
+    "no_videos": "Gere vídeos primeiro.",
+    "views_btn": "+ Views",
+    "save": "Salvar",
+    "claimed": "Resgatado ✓",
+    "claim_credit": "Resgatar +{{n}} crédito",
+    "claim_badge": "Resgatar Badge",
+    "claiming": "Resgatando...",
+    "progress": "Progresso",
+    "milestone_views": "Milestone de views",
+    "milestone_creation": "Milestone de criação",
+    "views_saved": "Views registradas!"
+  },
+  "billing": {
+    "title": "Assinatura",
+    "note": "1 crédito = 1 vídeo completo · roteiro + voz + imagens + player · renova mensalmente",
+    "referral_title": "Programa de Indicação",
+    "referral_desc": "Indique amigos e ganhe <strong>+5 créditos</strong> para cada cadastro realizado.",
+    "referral_count": "indicados",
+    "referral_copy": "Copiar link",
+    "referral_credits": "✓ {{n}} créditos ganhos por indicações",
+    "history_title": "Histórico de Uso",
+    "history_sub_one": "{{n}} crédito usado",
+    "history_sub_other": "{{n}} créditos usados",
+    "current_plan": "Plano atual ✓",
+    "subscribe": "Assinar {{name}} →",
+    "per_month": "/mês",
+    "currency": "R$",
+    "credits_month": "créditos / mês",
+    "most_popular": "MAIS POPULAR",
+    "plans": {
+      "starter": { "price": "47", "credits": 20 },
+      "pro": { "price": "97", "credits": 100 },
+      "enterprise": { "price": "297", "credits": 999 }
+    }
+  },
+  "credits": {
+    "label": "Créditos",
+    "unlimited": "∞",
+    "used": "{{used}} de {{max}} usados",
+    "low": "Créditos baixos — upgrade →"
+  },
+  "common": {
+    "loading": "Carregando...",
+    "online": "online",
+    "language": "Idioma",
+    "copy_link": "Link copiado!",
+    "close": "Fechar",
+    "cancel": "Cancelar"
+  },
+  "voice": {
+    "masculine": "Grave Masculina (PT-BR)",
+    "feminine": "Misteriosa Feminina (PT-BR)",
+    "neutral": "Neutro (PT-BR)",
+    "asmr": "Sussurrada (ASMR)"
+  },
+  "content_type": {
+    "faceless": "Faceless / Dark Channel",
+    "educational": "Educativo / Documentário",
+    "inspirational": "Inspiracional / Motivacional",
+    "religious": "Religioso / Espiritual",
+    "news": "Notícias / Atualidades",
+    "mystery": "Mistério e Conspirações",
+    "truecrime": "True Crime",
+    "finance": "Finanças / Dinheiro",
+    "nature": "Natureza / Viagem",
+    "sports": "Esportes / Entretenimento",
+    "food": "Gastronomia / Culinária",
+    "horror": "Terror e Creepypasta",
+    "asmr": "ASMR / Relaxamento"
+  },
+  "duration": {
+    "short": "Curto (até 1 min)",
+    "long": "Longo (1 min a 3 min)"
+  },
+  "format": {
+    "landscape": "Horizontal 16:9 — YouTube",
+    "portrait": "Vertical 9:16 — Shorts / TikTok"
+  }
+}

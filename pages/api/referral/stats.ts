@@ -1,8 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
+﻿import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
+import { verifyToken } from '../../../lib/auth'
 import { getUsers } from '../../../lib/db'
 
-const JWT = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
+const JWT = process.env.JWT_SECRET!
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const token = req.headers.authorization?.replace('Bearer ', '')

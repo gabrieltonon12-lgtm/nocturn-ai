@@ -647,7 +647,13 @@ export default function Dashboard() {
 
                 {/* Stats row */}
                 <div className="stat-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px',marginBottom:'24px'}}>
-                  {[
+                  {videosLoading ? [0,1,2].map(i => (
+                    <div key={i} style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'12px',padding:'20px 22px',display:'flex',flexDirection:'column',gap:'10px'}}>
+                      <div className="skeleton" style={{height:'10px',width:'60px'}}/>
+                      <div className="skeleton" style={{height:'28px',width:'50px',borderRadius:'6px'}}/>
+                      <div className="skeleton" style={{height:'9px',width:'90px'}}/>
+                    </div>
+                  )) : [
                     {label:t('stats.videos'), value:videos.length, sub:t('stats.videos_sub'), highlight:true},
                     {label:t('stats.credits'), value:maxCredits===99999?t('credits.unlimited'):Math.min(user.credits??0,maxCredits), sub:maxCredits===99999?t('stats.credits_unlimited'):t('stats.credits_sub',{max:maxCredits})},
                     {label:t('stats.plan'), value:planLabel, sub:t('stats.plan_sub'), color:planColor},
@@ -935,7 +941,21 @@ export default function Dashboard() {
                     </button>
                   </div>
                 </div>
-                {videos.length === 0 ? (
+                {videosLoading ? (
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'14px'}}>
+                    {[0,1,2,3,4,5].map(i => (
+                      <div key={i} style={{background:C.card,border:`1px solid ${C.line}`,borderRadius:'12px',padding:'16px',display:'flex',flexDirection:'column',gap:'12px'}}>
+                        <div className="skeleton" style={{height:'140px',borderRadius:'8px'}}/>
+                        <div className="skeleton" style={{height:'14px',width:'75%'}}/>
+                        <div className="skeleton" style={{height:'12px',width:'45%'}}/>
+                        <div style={{display:'flex',gap:'8px',marginTop:'4px'}}>
+                          <div className="skeleton" style={{height:'30px',width:'70px',borderRadius:'8px'}}/>
+                          <div className="skeleton" style={{height:'30px',width:'70px',borderRadius:'8px'}}/>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : videos.length === 0 ? (
                   <div style={{textAlign:'center',padding:'80px 20px',color:C.t3}}>
                     <div style={{fontSize:'40px',marginBottom:'16px',opacity:.25}}>🎬</div>
                     <div style={{fontFamily:F.head,fontSize:'16px',fontWeight:700,marginBottom:'8px',color:C.t2,letterSpacing:'-0.02em'}}>{t('lib.empty_title')}</div>

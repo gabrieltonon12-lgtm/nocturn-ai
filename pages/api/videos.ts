@@ -1,5 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
+﻿import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
+import { verifyToken } from '../../lib/auth'
 import { getVideos, ensureAdmin } from '../../lib/db'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -10,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const auth = req.headers.authorization
     if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token obrigatório' })
     const token = auth.split(' ')[1]
-    const secret = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
+    const secret = process.env.JWT_SECRET!
 
     let decoded: any
     try {

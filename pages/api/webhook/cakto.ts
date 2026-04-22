@@ -106,7 +106,7 @@ async function sendWelcomeEmail(email: string, name: string, plan: string, passw
           Acessar meu dashboard →
         </a>
         <p style="color:#4a5568;font-size:12px;line-height:1.7;margin:0">
-          Dúvidas? Responda este email · suporte@sonorem.com
+          Dúvidas? Responda este email · suporte@nocturn-ai.vercel.app
         </p>
       </div>
     </div>
@@ -118,8 +118,8 @@ async function sendWelcomeEmail(email: string, name: string, plan: string, passw
       method: 'POST',
       headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'NOCTURN.AI <noreply@sonorem.com>',
-        reply_to: 'suporte@sonorem.com',
+        from: 'NOCTURN.AI <noreply@nocturn-ai.vercel.app>',
+        reply_to: 'suporte@nocturn-ai.vercel.app',
         to: [email],
         subject: '🎉 Seu acesso ao NOCTURN.AI está pronto!',
         html,

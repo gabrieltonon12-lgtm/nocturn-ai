@@ -1,6 +1,6 @@
 import Head from 'next/head'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const PLANS = [
   {
@@ -31,13 +31,15 @@ const FAQS = [
   { q: 'Quanto tempo leva para gerar um vídeo?', a: 'Menos de 3 minutos. Você digita o tema, clica em gerar, e em menos de 3 minutos tem roteiro + narração + imagens + player pronto para baixar e publicar.' },
   { q: 'Posso cancelar quando quiser?', a: 'Sim, sem burocracia. Cancele a qualquer momento direto pelo painel. E se não ficar satisfeito nos primeiros 7 dias, devolvemos 100% do valor.' },
   { q: 'Quantos canais posso criar com uma conta?', a: 'Sem limite. Com uma conta Pro, você pode criar 100 vídeos por mês e distribuir entre quantos canais quiser — YouTube, TikTok, Instagram, Shorts.' },
+  { q: 'O YouTube vai banir meu canal por usar IA?', a: 'Não. O YouTube não proíbe conteúdo gerado com IA — o que importa é que o conteúdo siga as diretrizes da plataforma. Canais faceless e de IA estão entre os que mais crescem no YouTube atualmente. Você precisa apenas declarar que usa IA nas configurações do canal, o que o NOCTURN.AI orienta no onboarding.' },
+  { q: 'O conteúdo gerado é realmente original? Não é cópia de outros canais?', a: 'Sim, totalmente original. Todo roteiro é criado do zero pelo GPT-4o com base no tema que você escolhe — não é cópia de nenhum canal ou artigo existente. As imagens vêm do Pexels com licença comercial livre. Cada vídeo é único, mesmo que o tema seja o mesmo de outro criador.' },
 ]
 
 const TESTIMONIALS = [
-  { name: 'Rafael M.', role: 'Criador · Canal True Crime', avatar: 'R', color: '#C5183A', text: 'Criei 3 canais em 6 semanas sem aparecer em nenhum. O canal maior já tem 12 mil inscritos. Jamais teria conseguido produzindo manualmente.', metric: '12k inscritos em 6 semanas' },
-  { name: 'Camila R.', role: 'Criadora · Canal Mistério', avatar: 'C', color: '#7C3AED', text: 'Testei outras ferramentas mas o roteiro saía genérico. Aqui o GPT-4o gera algo que parece escrito por um roteirista de verdade. A voz é assustadoramente boa.', metric: '47 vídeos no 1º mês' },
-  { name: 'Diego S.', role: 'Criador · Dark Finance', avatar: 'D', color: '#059669', text: 'R$4.200 no terceiro mês. Ainda não acredito. Trabalho 20 minutos por dia só escolhendo temas. O resto a IA resolve.', metric: 'R$4.200 no 3º mês' },
-  { name: 'Thiago P.', role: 'Criador · Conspirações BR', avatar: 'T', color: '#D97706', text: 'Era editor freelancer cobrando R$400 por vídeo. Hoje meu canal faceless gera mais do que meus clientes me pagavam. Essa ferramenta destruiu meu emprego de um jeito bom.', metric: '8 canais ativos simultâneos' },
+  { name: 'Rafael M.', role: 'Canal True Crime', avatar: 'R', color: '#C5183A', text: 'Criei 3 canais em 6 semanas sem aparecer em nenhum. O canal maior já tem 12 mil inscritos.', metric: '12k inscritos em 6 semanas' },
+  { name: 'Camila R.', role: 'Canal Mistério', avatar: 'C', color: '#7C3AED', text: 'O GPT-4o gera algo que parece escrito por um roteirista de verdade. A voz é assustadoramente boa.', metric: '47 vídeos no 1º mês' },
+  { name: 'Diego S.', role: 'Dark Finance', avatar: 'D', color: '#059669', text: 'R$4.200 no terceiro mês. Trabalho 20 minutos por dia só escolhendo temas. O resto a IA resolve.', metric: 'R$4.200 no 3º mês' },
+  { name: 'Thiago P.', role: 'Conspirações BR', avatar: 'T', color: '#D97706', text: 'Era editor cobrando R$400 por vídeo. Hoje meu canal faceless gera mais do que meus clientes pagavam.', metric: '8 canais ativos' },
 ]
 
 const LIVE_EVENTS = [
@@ -48,34 +50,139 @@ const LIVE_EVENTS = [
   { name: 'Lucas R.', city: 'Porto Alegre', action: 'assinou o plano Pro' },
   { name: 'Carla F.', city: 'Brasília', action: 'monetizou o canal em 30 dias' },
   { name: 'Bruno T.', city: 'Salvador', action: 'gerou vídeo de true crime' },
-  { name: 'Fernanda K.', city: 'Recife', action: 'atingiu 5k inscritos' },
-  { name: 'Rodrigo A.', city: 'Fortaleza', action: 'baixou seu 3º vídeo hoje' },
-  { name: 'Juliana C.', city: 'Florianópolis', action: 'gerou vídeo de mistério' },
 ]
 
-// ── Countdown urgency banner ──────────────────────────────────────────────────
-function CountdownBanner() {
-  const [time, setTime] = useState({ h: 23, m: 59, s: 59 })
-  const [mounted, setMounted] = useState(false)
+// Real Pexels thumbnails for visual mockups
+const THUMB_IMGS = [
+  'https://images.pexels.com/photos/957024/forest-trees-perspective-bright-957024.jpeg?auto=compress&w=160&h=90&fit=crop',
+  'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&w=160&h=90&fit=crop',
+  'https://images.pexels.com/photos/1252869/pexels-photo-1252869.jpeg?auto=compress&w=160&h=90&fit=crop',
+  'https://images.pexels.com/photos/2694434/pexels-photo-2694434.jpeg?auto=compress&w=160&h=90&fit=crop',
+  'https://images.pexels.com/photos/33041/antelope-canyon-lower-canyon-arizona.jpg?auto=compress&w=160&h=90&fit=crop',
+  'https://images.pexels.com/photos/1591305/pexels-photo-1591305.jpeg?auto=compress&w=160&h=90&fit=crop',
+]
+
+const MARQUEE_ITEMS = [
+  '🔴 True Crime', '👽 Ovnis & OVNI', '🌑 Conspiração', '💀 Terror Urbano',
+  '🛸 Área 51', '🕵️ Mistério', '🐍 Deep Web', '⛪ Religioso', '🌊 Catástrofes',
+  '💰 Dark Finance', '🧠 Psicologia Sombria', '🔮 Ocultismo', '🌋 Fim do Mundo',
+  '🦠 Pandemias', '🕳️ Buracos Negros', '🔴 True Crime', '👽 Ovnis & OVNI',
+  '🌑 Conspiração', '💀 Terror Urbano', '🛸 Área 51', '🕵️ Mistério',
+]
+
+// ── Generation stages shown in mockup ────────────────────────────────────────
+const GEN_STAGES = [
+  { label: 'Gerando roteiro...', sub: 'GPT-4o analisando o tema', pct: 18, color: '#C5183A' },
+  { label: 'Sintetizando voz...', sub: 'OpenAI TTS HD em PT-BR', pct: 42, color: '#7C3AED' },
+  { label: 'Buscando imagens...', sub: 'Pexels API · 6 cenas', pct: 71, color: '#D97706' },
+  { label: 'Montando vídeo...', sub: 'Canvas rAF loop + legendas', pct: 89, color: '#059669' },
+  { label: '✓ Pronto para publicar', sub: 'WebM · 1280×720 · 00:02:47', pct: 100, color: '#059669' },
+]
+
+// ── Animated hero mockup ──────────────────────────────────────────────────────
+function HeroMockup() {
+  const [stage, setStage] = useState(0)
+  const [shown, setShown] = useState(false)
+
   useEffect(() => {
-    setMounted(true)
-    const tick = () => {
-      const now = new Date()
-      const end = new Date(); end.setHours(23, 59, 59, 0)
-      const diff = Math.max(0, end.getTime() - now.getTime())
-      setTime({ h: Math.floor(diff / 3600000), m: Math.floor((diff % 3600000) / 60000), s: Math.floor((diff % 60000) / 1000) })
-    }
-    tick(); const id = setInterval(tick, 1000); return () => clearInterval(id)
+    // Delay start so first render isn't mid-cycle
+    const t0 = setTimeout(() => setShown(true), 400)
+    return () => clearTimeout(t0)
   }, [])
-  if (!mounted) return null
-  const p = (n: number) => n.toString().padStart(2, '0')
+
+  useEffect(() => {
+    if (!shown) return
+    const intervals = [2200, 1800, 2000, 1800, 3000]
+    const id = setTimeout(() => {
+      setStage(s => (s + 1) % GEN_STAGES.length)
+    }, intervals[stage] || 2000)
+    return () => clearTimeout(id)
+  }, [stage, shown])
+
+  const cur = GEN_STAGES[stage]
+  const isDone = stage === GEN_STAGES.length - 1
+
   return (
-    <div style={{ background: 'linear-gradient(90deg,#6B0A1C,#C5183A,#6B0A1C)', padding: '10px 20px', textAlign: 'center', fontSize: '13px', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
-      <span>🔥 Oferta de lançamento — <strong>1 vídeo GRÁTIS</strong> ao criar conta · Expira em</span>
-      <span style={{ fontFamily: "'JetBrains Mono',monospace", background: 'rgba(0,0,0,.3)', padding: '2px 8px', borderRadius: '5px', fontSize: '13px', letterSpacing: '0.04em' }}>
-        {p(time.h)}:{p(time.m)}:{p(time.s)}
-      </span>
-      <Link href="/register" style={{ color: '#FFE55C', fontWeight: 700, textDecoration: 'underline', fontSize: '13px' }}>Pegar meu crédito grátis →</Link>
+    <div style={{
+      position: 'relative',
+      width: '100%',
+      maxWidth: '480px',
+      background: '#FFFFFF',
+      border: '1px solid #E2E8F0',
+      borderRadius: '20px',
+      overflow: 'hidden',
+      boxShadow: '0 32px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)',
+    }}>
+      {/* Top bar */}
+      <div style={{ padding: '14px 18px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: '10px', background: '#F8FAFC' }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {['#FF5F57','#FEBC2E','#28C840'].map((c, i) => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', background: c, opacity: 0.8 }} />)}
+        </div>
+        <div style={{ flex: 1, background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', color: '#94A3B8', fontFamily: "'JetBrains Mono',monospace" }}>
+          nocturn.ai/dashboard
+        </div>
+      </div>
+
+      {/* Thumb grid — real Pexels images */}
+      <div style={{ padding: '16px 18px 10px', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', background: '#FFFFFF' }}>
+        {THUMB_IMGS.map((src, i) => (
+          <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', aspectRatio: '16/9', background: '#F1F5F9' }}>
+            <img
+              src={src}
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'brightness(0.9) saturate(0.95)', transition: 'opacity 0.5s' }}
+              loading="lazy"
+            />
+            {isDone && (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ fontSize: '18px' }}>▶</div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Status area */}
+      <div style={{ padding: '10px 18px 18px', background: '#FFFFFF' }}>
+        {/* Progress bar */}
+        <div style={{ height: '3px', background: '#F1F5F9', borderRadius: '3px', marginBottom: '14px', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: `${cur.pct}%`,
+            background: `linear-gradient(90deg, ${cur.color}, ${cur.color}99)`,
+            borderRadius: '3px',
+            transition: 'width 0.9s cubic-bezier(.4,0,.2,1)',
+          }} />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: isDone ? '#10B981' : '#0F172A', fontFamily: "'Space Grotesk',sans-serif", letterSpacing: '-0.02em', transition: 'color 0.3s' }}>
+              {cur.label}
+            </div>
+            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#94A3B8', marginTop: '3px' }}>
+              {cur.sub}
+            </div>
+          </div>
+          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: cur.color, fontWeight: 700, flexShrink: 0, transition: 'color 0.3s' }}>
+            {cur.pct}%
+          </div>
+        </div>
+
+        {/* Stage dots */}
+        <div style={{ display: 'flex', gap: '4px', marginTop: '12px' }}>
+          {GEN_STAGES.map((_, i) => (
+            <div key={i} style={{
+              flex: 1, height: '2px', borderRadius: '2px',
+              background: i <= stage ? cur.color : '#E2E8F0',
+              transition: 'background 0.4s',
+            }} />
+          ))}
+        </div>
+      </div>
+
+      {/* Glow */}
+      <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '200px', height: '200px', background: `radial-gradient(circle, ${cur.color}18 0%, transparent 60%)`, pointerEvents: 'none', transition: 'background 0.6s' }} />
     </div>
   )
 }
@@ -90,18 +197,18 @@ function LiveNotification() {
       setVisible(true)
       setTimeout(() => setVisible(false), 5000)
     }
-    const delay = setTimeout(show, 5000)
-    const id = setInterval(show, 20000)
+    const delay = setTimeout(show, 6000)
+    const id = setInterval(show, 22000)
     return () => { clearTimeout(delay); clearInterval(id) }
   }, [])
   if (!visible) return null
   return (
-    <div style={{ position: 'fixed', bottom: '80px', left: '20px', zIndex: 999, background: '#080D1A', border: '1px solid #203050', borderRadius: '12px', padding: '12px 16px', display: 'flex', gap: '10px', alignItems: 'center', boxShadow: '0 8px 32px rgba(0,0,0,.7)', animation: 'fadeUp .3s ease', maxWidth: '300px', fontFamily: "'Inter',sans-serif" }}>
-      <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg,#C5183A,#7C3AED)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', flexShrink: 0 }}>🎬</div>
+    <div style={{ position: 'fixed', bottom: '80px', left: '20px', zIndex: 999, background: 'rgba(255,255,255,0.98)', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '12px 16px', display: 'flex', gap: '10px', alignItems: 'center', boxShadow: '0 12px 40px rgba(0,0,0,.12)', animation: 'fadeUp .3s ease', maxWidth: '300px', fontFamily: "'Inter',sans-serif", backdropFilter: 'blur(16px)' }}>
+      <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg,#C5183A,#7C3AED)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>🎬</div>
       <div>
-        <div style={{ fontSize: '12px', fontWeight: 600, color: '#ECF2FA', lineHeight: 1.35 }}>{ev.name} <span style={{ color: '#6E8099', fontWeight: 400 }}>de {ev.city}</span></div>
-        <div style={{ fontSize: '11px', color: '#6E8099', marginTop: '2px' }}>{ev.action}</div>
-        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#364A62', marginTop: '3px' }}>agora mesmo · NOCTURN.AI</div>
+        <div style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A', lineHeight: 1.35 }}>{ev.name} <span style={{ color: '#64748B', fontWeight: 400 }}>· {ev.city}</span></div>
+        <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>{ev.action}</div>
+        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', marginTop: '3px' }}>agora mesmo</div>
       </div>
     </div>
   )
@@ -111,14 +218,14 @@ function LiveNotification() {
 function StickyCtaBar() {
   const [visible, setVisible] = useState(false)
   useEffect(() => {
-    const handler = () => setVisible(window.scrollY > 500)
+    const handler = () => setVisible(window.scrollY > 600)
     window.addEventListener('scroll', handler, { passive: true })
     return () => window.removeEventListener('scroll', handler)
   }, [])
   if (!visible) return null
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 998, background: 'rgba(5,8,15,.97)', backdropFilter: 'blur(16px)', borderTop: '1px solid #192436', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#6E8099' }}>1 vídeo grátis · sem cartão · cancele quando quiser</span>
+    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 998, background: 'rgba(255,255,255,.97)', backdropFilter: 'blur(20px)', borderTop: '1px solid #192436', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
+      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#64748B' }}>1 vídeo grátis · sem cartão · cancele quando quiser</span>
       <Link href="/register" style={{ background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '10px 32px', borderRadius: '9px', fontWeight: 700, fontSize: '14px', fontFamily: "'Space Grotesk',sans-serif", letterSpacing: '-0.01em', boxShadow: '0 4px 20px rgba(197,24,58,.4)' }}>
         Começar grátis agora →
       </Link>
@@ -130,35 +237,68 @@ function StickyCtaBar() {
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false)
   return (
-    <div onClick={() => setOpen(!open)} style={{ background: '#080D1A', border: `1px solid ${open ? 'rgba(197,24,58,.25)' : '#192436'}`, borderRadius: '12px', padding: '20px 24px', cursor: 'pointer', transition: 'border-color .15s' }}>
+    <div onClick={() => setOpen(!open)} style={{ background: 'rgba(255,255,255,0.9)', border: `1px solid ${open ? 'rgba(197,24,58,.3)' : '#E2E8F0'}`, borderRadius: '14px', padding: '20px 24px', cursor: 'pointer', transition: 'border-color .2s', backdropFilter: 'blur(8px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '14px', fontWeight: 600, color: '#ECF2FA', letterSpacing: '-0.02em', lineHeight: 1.4 }}>{q}</div>
-        <div style={{ color: open ? '#C5183A' : '#364A62', fontSize: '20px', flexShrink: 0, transition: 'color .15s, transform .15s', transform: open ? 'rotate(45deg)' : 'none' }}>+</div>
+        <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '15px', fontWeight: 600, color: '#0F172A', lineHeight: 1.4 }}>{q}</div>
+        <div style={{ color: open ? '#C5183A' : '#94A3B8', fontSize: '20px', flexShrink: 0, transition: 'color .2s, transform .2s', transform: open ? 'rotate(45deg)' : 'none' }}>+</div>
       </div>
-      {open && <div style={{ fontSize: '13px', color: '#6E8099', lineHeight: 1.75, marginTop: '14px' }}>{a}</div>}
+      {open && <div style={{ fontSize: '14px', color: '#64748B', lineHeight: 1.8, marginTop: '14px', fontFamily: "'Inter',sans-serif" }}>{a}</div>}
     </div>
   )
 }
 
-// ── Animated counter ──────────────────────────────────────────────────────────
-function AnimCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
-  const [val, setVal] = useState(0)
-  const [started, setStarted] = useState(false)
+// ── Exit intent popup ─────────────────────────────────────────────────────────
+function ExitIntentPopup() {
+  const [show, setShow] = useState(false)
+  const [email, setEmail] = useState('')
+  const [sent, setSent] = useState(false)
+  const fired = typeof window !== 'undefined' && (window as any).__exitFired
+
   useEffect(() => {
-    if (!started) return
-    const dur = 1800, step = 16
-    const inc = target / (dur / step)
-    let cur = 0
-    const id = setInterval(() => { cur = Math.min(cur + inc, target); setVal(Math.floor(cur)); if (cur >= target) clearInterval(id) }, step)
-    return () => clearInterval(id)
-  }, [started, target])
-  useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setStarted(true) }, { threshold: 0.5 })
-    const el = document.getElementById('stats-section')
-    if (el) obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-  return <>{val.toLocaleString('pt-BR')}{suffix}</>
+    if (fired) return
+    const handler = (e: MouseEvent) => {
+      if (e.clientY <= 10 && !show && !(window as any).__exitFired) {
+        ;(window as any).__exitFired = true
+        setShow(true)
+      }
+    }
+    document.addEventListener('mouseleave', handler)
+    return () => document.removeEventListener('mouseleave', handler)
+  }, [show, fired])
+
+  if (!show) return null
+
+  return (
+    <div style={{ position:'fixed',inset:0,zIndex:9999,background:'rgba(2,6,14,.88)',backdropFilter:'blur(10px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',animation:'fadeIn .3s ease' }}>
+      <div style={{ background:'#fff',borderRadius:'22px',padding:'40px 36px',maxWidth:'480px',width:'100%',boxShadow:'0 40px 100px rgba(0,0,0,.35)',position:'relative',animation:'fadeUp .35s ease',textAlign:'center' }}>
+        <button onClick={() => setShow(false)} style={{ position:'absolute',top:'16px',right:'16px',background:'none',border:'none',fontSize:'22px',color:'#94A3B8',cursor:'pointer',lineHeight:1 }}>×</button>
+
+        <div style={{ fontSize:'52px',marginBottom:'16px',lineHeight:1 }}>🎁</div>
+        <h2 style={{ fontFamily:"'Bricolage Grotesque',sans-serif",fontSize:'28px',fontWeight:800,letterSpacing:'-0.04em',color:'#0F172A',marginBottom:'10px',lineHeight:1.1 }}>
+          Espera! Você tem<br /><span style={{ color:'#C5183A' }}>3 créditos grátis</span> esperando
+        </h2>
+        <p style={{ fontSize:'14px',color:'#64748B',lineHeight:1.7,marginBottom:'24px' }}>
+          Crie sua conta agora e ganhe 3 vídeos grátis para testar. Sem cartão, sem compromisso.
+        </p>
+
+        {!sent ? (
+          <div style={{ display:'flex',flexDirection:'column',gap:'10px' }}>
+            <Link href="/register" onClick={() => setShow(false)}
+              style={{ display:'block',background:'linear-gradient(135deg,#C5183A,#8B0A22)',color:'#fff',padding:'14px 28px',borderRadius:'11px',fontWeight:700,fontSize:'16px',fontFamily:"'Space Grotesk',sans-serif",letterSpacing:'-0.02em',boxShadow:'0 6px 30px rgba(197,24,58,.4)',textDecoration:'none' }}>
+              Quero meus 3 vídeos grátis →
+            </Link>
+            <button onClick={() => setShow(false)} style={{ background:'none',border:'none',fontSize:'12px',color:'#94A3B8',cursor:'pointer',padding:'4px',fontFamily:"'Inter',sans-serif" }}>
+              Não, prefiro pagar R$400 por vídeo
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding:'16px',background:'rgba(5,150,105,.08)',border:'1px solid rgba(5,150,105,.3)',borderRadius:'12px',color:'#059669',fontWeight:600,fontSize:'14px' }}>
+            ✅ Conta criada! Seus créditos já estão disponíveis.
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -188,130 +328,180 @@ export default function Home() {
         * { margin:0; padding:0; box-sizing:border-box; }
         html { scroll-behavior:smooth; }
         a { text-decoration:none; }
-        .cta-red { transition: box-shadow .18s, transform .15s !important; }
-        .cta-red:hover { box-shadow: 0 12px 48px rgba(197,24,58,.55) !important; transform: translateY(-2px) !important; }
-        .ghost-btn:hover { border-color: #364A62 !important; color: #ECF2FA !important; }
-        .plan-card { transition: border-color .18s, transform .18s, box-shadow .18s !important; }
-        .plan-card:hover { transform: translateY(-4px) !important; box-shadow: 0 20px 60px rgba(0,0,0,.4) !important; }
-        .pain-item { transition: border-color .18s, background .18s !important; }
-        .pain-item:hover { border-color: rgba(197,24,58,.3) !important; background: rgba(197,24,58,.03) !important; }
-        .testimonial-card { transition: border-color .18s, transform .18s !important; }
-        .testimonial-card:hover { transform: translateY(-3px) !important; border-color: #203050 !important; }
-        .step-card { transition: border-color .18s !important; }
-        .step-card:hover { border-color: rgba(197,24,58,.2) !important; }
+        body { -webkit-font-smoothing:antialiased; }
+        .cta-btn { transition: box-shadow .2s, transform .18s !important; }
+        .cta-btn:hover { box-shadow: 0 16px 56px rgba(197,24,58,.6) !important; transform: translateY(-2px) !important; }
+        .ghost-btn:hover { background: rgba(0,0,0,.04) !important; color: #0F172A !important; border-color: #CBD5E1 !important; }
+        .plan-card { transition: border-color .2s, transform .2s, box-shadow .2s !important; }
+        .plan-card:hover { transform: translateY(-6px) !important; box-shadow: 0 24px 64px rgba(0,0,0,.55), 0 0 0 1px rgba(197,24,58,.15) !important; }
+        .plan-card-popular:hover { box-shadow: 0 24px 64px rgba(197,24,58,.25), 0 0 0 1px rgba(197,24,58,.4) !important; }
+        .step-card { transition: border-color .2s, background .2s !important; }
+        .step-card:hover { border-color: rgba(197,24,58,.25) !important; background: rgba(197,24,58,.025) !important; }
+        .testimonial-card { transition: border-color .2s, transform .2s !important; }
+        .testimonial-card:hover { transform: translateY(-4px) !important; border-color: #203050 !important; }
         @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
-        @keyframes fadeUp { from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)} }
-        @keyframes ticker { 0%{transform:translateX(0)}100%{transform:translateX(-50%)} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)} }
+        @keyframes marquee { 0%{transform:translateX(0)}100%{transform:translateX(-50%)} }
+        @keyframes floatY { 0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)} }
+        @keyframes shimmer { 0%{opacity:.5}50%{opacity:1}100%{opacity:.5} }
+        @media(max-width:767px){
+          .hero-split{flex-direction:column !important; text-align:center !important;}
+          .hero-split .hero-cta{align-items:center !important;}
+          .hide-mobile{display:none !important;}
+          .stats-grid{grid-template-columns:repeat(2,1fr) !important;}
+          .steps-grid{grid-template-columns:1fr !important;}
+        }
       `}</style>
 
       <LiveNotification />
       <StickyCtaBar />
+      <ExitIntentPopup />
 
-      <div style={{ background: '#02040A', color: '#ECF2FA', fontFamily: "'Inter',system-ui,sans-serif", minHeight: '100vh', overflowX: 'hidden' }}>
+      <div style={{ background: '#F8FAFC', color: '#0F172A', fontFamily: "'Inter',system-ui,sans-serif", minHeight: '100vh', overflowX: 'hidden' }}>
 
-        {/* AMBIENT */}
+        {/* AMBIENT BG */}
         <div aria-hidden style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: '-25%', left: '-5%', width: '900px', height: '900px', background: 'radial-gradient(circle,rgba(197,24,58,.06) 0%,transparent 60%)' }} />
-          <div style={{ position: 'absolute', bottom: '-15%', right: '-5%', width: '800px', height: '800px', background: 'radial-gradient(circle,rgba(124,58,237,.05) 0%,transparent 60%)' }} />
+          <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '800px', height: '800px', background: 'radial-gradient(circle,rgba(197,24,58,.05) 0%,transparent 65%)' }} />
+          <div style={{ position: 'absolute', bottom: '-20%', right: '-5%', width: '700px', height: '700px', background: 'radial-gradient(circle,rgba(124,58,237,.04) 0%,transparent 65%)' }} />
+          <div style={{ position: 'absolute', top: '40%', left: '40%', width: '600px', height: '600px', background: 'radial-gradient(circle,rgba(197,24,58,.03) 0%,transparent 60%)', transform: 'translate(-50%,-50%)' }} />
+        </div>
+
+        {/* ── ANNOUNCEMENT BAR ── */}
+        <div style={{ background: 'linear-gradient(90deg,rgba(197,24,58,.15),rgba(124,58,237,.1),rgba(197,24,58,.15))', borderBottom: '1px solid rgba(197,24,58,.2)', padding: '9px 24px', textAlign: 'center', position: 'sticky', top: 0, zIndex: 101, backdropFilter: 'blur(12px)' }}>
+          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#D97706', fontWeight: 600, letterSpacing: '0.04em' }}>
+            🔥 OFERTA DE LANÇAMENTO
+          </span>
+          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#64748B', marginLeft: '12px' }}>
+            50% de desconto no plano Pro por tempo limitado · <Link href="/register" style={{ color: '#C5183A', fontWeight: 700, textDecoration: 'underline' }}>Garantir agora →</Link>
+          </span>
         </div>
 
         {/* ── NAV ── */}
-        <nav style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(2,4,10,.94)', backdropFilter: 'blur(20px)', borderBottom: '1px solid #192436' }}>
-          <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '0 24px', height: '58px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <nav style={{ position: 'sticky', top: '38px', zIndex: 100, background: 'rgba(255,255,255,.96)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
+          <div style={{ maxWidth: '1120px', margin: '0 auto', padding: '0 24px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, color: '#fff', fontSize: '13px', boxShadow: '0 2px 10px rgba(197,24,58,.35)' }}>N</div>
-              <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '15px', fontWeight: 700, letterSpacing: '-0.03em' }}>NOCTURN.AI</span>
+              <div style={{ width: '30px', height: '30px', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, color: '#fff', fontSize: '14px', boxShadow: '0 2px 12px rgba(197,24,58,.4)', letterSpacing: '-0.5px' }}>N</div>
+              <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '16px', fontWeight: 800, letterSpacing: '-0.04em', color: '#0F172A' }}>NOCTURN.AI</span>
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Link href="#planos" className="ghost-btn" style={{ color: '#6E8099', fontSize: '13px', fontWeight: 500, padding: '6px 14px', borderRadius: '8px', border: '1px solid #192436', transition: 'all .15s' }}>Planos</Link>
-              <Link href="/login" className="ghost-btn" style={{ color: '#6E8099', fontSize: '13px', fontWeight: 500, padding: '6px 14px', borderRadius: '8px', border: '1px solid #192436', transition: 'all .15s' }}>Entrar</Link>
-              <Link href="/register" className="cta-red" style={{ background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', fontSize: '13px', fontWeight: 700, padding: '7px 18px', borderRadius: '8px', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 4px 18px rgba(197,24,58,.3)' }}>
-                1 vídeo grátis →
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <Link href="#planos" className="ghost-btn" style={{ color: '#64748B', fontSize: '13px', fontWeight: 500, padding: '7px 14px', borderRadius: '8px', border: '1px solid #192436', transition: 'all .2s' }}>Planos</Link>
+              <Link href="/login" className="ghost-btn" style={{ color: '#64748B', fontSize: '13px', fontWeight: 500, padding: '7px 14px', borderRadius: '8px', border: '1px solid #192436', transition: 'all .2s' }}>Entrar</Link>
+              <Link href="/register" className="cta-btn" style={{ background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', fontSize: '13px', fontWeight: 700, padding: '8px 20px', borderRadius: '8px', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 4px 18px rgba(197,24,58,.32)', whiteSpace: 'nowrap' }}>
+                Criar conta grátis →
               </Link>
             </div>
           </div>
         </nav>
 
-        {/* ── HERO ── */}
-        <section style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '96px 24px 80px', maxWidth: '840px', margin: '0 auto' }}>
+        {/* ── HERO — SPLIT LAYOUT ── */}
+        <section style={{ position: 'relative', zIndex: 1, padding: '80px 24px 60px', maxWidth: '1120px', margin: '0 auto' }}>
+          <div className="hero-split" style={{ display: 'flex', alignItems: 'center', gap: '60px', justifyContent: 'space-between' }}>
 
-          {/* Social proof pill */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(5,150,105,.08)', border: '1px solid rgba(5,150,105,.18)', color: '#059669', padding: '5px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, marginBottom: '28px', fontFamily: "'JetBrains Mono',monospace" }}>
-            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#059669', boxShadow: '0 0 8px rgba(5,150,105,.8)', animation: 'pulse 2s infinite' }} />
-            +847 criadores ativos · R$4.200/mês de média
-          </div>
+            {/* Left: Text */}
+            <div style={{ flex: '0 0 auto', maxWidth: '540px' }}>
+              {/* Badge */}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(5,150,105,.08)', border: '1px solid rgba(5,150,105,.2)', color: '#10B981', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, marginBottom: '32px', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.02em' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 10px rgba(16,185,129,.8)', animation: 'pulse 2s infinite', display: 'inline-block' }} />
+                +1.200 criadores ativos · R$4.200/mês de média
+              </div>
 
-          <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(44px,7.5vw,86px)', fontWeight: 800, lineHeight: 1.0, letterSpacing: '-0.048em', marginBottom: '22px', color: '#ECF2FA' }}>
-            Você digita.<br />
-            <span style={{ color: '#C5183A' }}>A IA publica.</span>
-          </h1>
+              <h1 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(42px,5.5vw,76px)', fontWeight: 800, lineHeight: 1.0, letterSpacing: '-0.045em', marginBottom: '24px', color: '#0F172A' }}>
+                Você digita.<br />
+                <span style={{ color: '#C5183A', display: 'inline-block' }}>A IA publica.</span>
+              </h1>
 
-          <p style={{ fontSize: 'clamp(16px,2vw,20px)', color: '#6E8099', lineHeight: 1.6, marginBottom: '40px', maxWidth: '560px', margin: '0 auto 40px' }}>
-            Dark channel completo em <strong style={{ color: '#ECF2FA' }}>menos de 3 minutos</strong>.<br />
-            Roteiro + narração + vídeo. Sem câmera. Sem aparecer.
-          </p>
+              <p style={{ fontSize: '17px', color: '#64748B', lineHeight: 1.7, marginBottom: '40px', maxWidth: '460px', fontWeight: 400 }}>
+                Dark channel completo em{' '}
+                <strong style={{ color: '#0F172A', fontWeight: 600 }}>menos de 3 minutos</strong>.{' '}
+                Roteiro GPT-4o · narração TTS · montagem automática.{' '}
+                <strong style={{ color: '#0F172A', fontWeight: 600 }}>Sem câmera. Sem aparecer.</strong>
+              </p>
 
-          {/* Primary CTA */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <Link href="/register" className="cta-red" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '18px 52px', borderRadius: '12px', fontWeight: 700, fontSize: '18px', letterSpacing: '-0.02em', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 8px 40px rgba(197,24,58,.42)' }}>
-              Gerar meu 1º vídeo grátis →
-            </Link>
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {['Sem cartão', '1 vídeo grátis', 'Cancele quando quiser'].map((t, i) => (
-                <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#364A62', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ color: '#059669', fontWeight: 700 }}>✓</span> {t}
-                </span>
-              ))}
+              <div className="hero-cta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px' }}>
+                <Link href="/register" className="cta-btn" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '16px 44px', borderRadius: '12px', fontWeight: 700, fontSize: '17px', letterSpacing: '-0.02em', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 8px 44px rgba(197,24,58,.42)' }}>
+                  Gerar meu 1º vídeo grátis →
+                </Link>
+                <div style={{ display: 'flex', gap: '18px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {['Sem cartão', '1 vídeo grátis', 'Cancele quando quiser'].map((t, i) => (
+                    <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ color: '#10B981', fontWeight: 700 }}>✓</span> {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tech logos */}
+              <div style={{ marginTop: '44px', display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', opacity: 0.45 }}>
+                {['GPT-4o', 'OpenAI TTS', 'Pexels', 'WebM', 'PT-BR'].map((t, i) => (
+                  <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#64748B', letterSpacing: '0.1em', fontWeight: 500 }}>{t}</span>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Trust logos row */}
-          <div style={{ marginTop: '52px', display: 'flex', justifyContent: 'center', gap: '32px', alignItems: 'center', flexWrap: 'wrap', opacity: 0.5 }}>
-            {['GPT-4o', 'OpenAI TTS', 'Pexels API', 'WebM Export', 'PT-BR'].map((t, i) => (
-              <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#6E8099', letterSpacing: '0.08em', fontWeight: 500 }}>{t}</span>
-            ))}
+            {/* Right: Animated mockup */}
+            <div className="hide-mobile" style={{ flex: '0 0 auto', width: '100%', maxWidth: '460px', animation: 'floatY 6s ease-in-out infinite' }}>
+              <HeroMockup />
+            </div>
           </div>
         </section>
 
+        {/* ── POWERED BY ── */}
+        <div style={{ position: 'relative', zIndex: 1, borderTop: '1px solid rgba(0,0,0,.05)', padding: '20px 24px', textAlign: 'center' }}>
+          <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '32px', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#CBD5E1', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Powered by</span>
+            {['GPT-4o', 'OpenAI TTS', 'Pexels API', 'Vercel', 'Next.js'].map((t, i) => (
+              <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#94A3B8', fontWeight: 600, letterSpacing: '0.04em', opacity: 0.7 }}>{t}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* ── MARQUEE STRIP ── */}
+        <div style={{ position: 'relative', zIndex: 1, overflow: 'hidden', borderTop: '1px solid rgba(0,0,0,.06)', borderBottom: '1px solid rgba(0,0,0,.06)', background: 'rgba(241,245,249,0.8)', padding: '14px 0', marginBottom: '0' }}>
+          <div style={{ display: 'flex', animation: 'marquee 28s linear infinite', width: 'max-content' }}>
+            {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
+              <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#94A3B8', padding: '0 28px', whiteSpace: 'nowrap', letterSpacing: '0.05em', fontWeight: 500 }}>
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* ── ANTES vs DEPOIS ── */}
-        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '960px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 500 }}>Realidade vs IA</div>
-            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(26px,4vw,44px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1, color: '#ECF2FA' }}>
-              O mesmo vídeo.<br /><span style={{ color: '#6E8099' }}>Dois mundos diferentes.</span>
+        <section style={{ position: 'relative', zIndex: 1, padding: '96px 24px', maxWidth: '1000px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 600 }}>Realidade vs IA</div>
+            <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(28px,4vw,52px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: '#0F172A' }}>
+              O mesmo vídeo.<br /><span style={{ color: '#64748B', fontWeight: 600 }}>Dois mundos diferentes.</span>
             </h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0', border: '1px solid #192436', borderRadius: '20px', overflow: 'hidden' }}>
-            {/* Antes */}
-            <div style={{ background: '#080D1A', padding: '32px 28px' }}>
-              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', fontWeight: 600 }}>Sem NOCTURN.AI</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', border: '1px solid #192436', borderRadius: '20px', overflow: 'hidden' }}>
+            <div style={{ background: 'rgba(255,255,255,0.92)', padding: '32px 28px' }}>
+              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '22px', fontWeight: 600 }}>Sem NOCTURN.AI</div>
               {[
                 { label: 'Roteiro', val: '3–4 horas', icon: '✍️' },
                 { label: 'Narração', val: 'Microfone + estúdio', icon: '🎙️' },
-                { label: 'Edição', val: '4–8 horas no CapCut', icon: '🎬' },
+                { label: 'Edição', val: '4–8 horas', icon: '🎬' },
                 { label: 'Freelancer', val: 'R$200–500 por vídeo', icon: '💸' },
                 { label: 'Frequência', val: '1 vídeo por semana', icon: '📅' },
                 { label: 'Custo mensal', val: 'R$1.000–2.000+', icon: '❌' },
               ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: i < 5 ? '1px solid rgba(255,255,255,.04)' : 'none' }}>
-                  <span style={{ fontSize: '16px', lineHeight: 1 }}>{item.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', color: '#364A62', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.04em', textTransform: 'uppercase' }}>{item.label}</div>
-                    <div style={{ fontSize: '13px', color: '#6E8099', fontWeight: 500, marginTop: '2px' }}>{item.val}</div>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: i < 5 ? '1px solid rgba(0,0,0,.05)' : 'none' }}>
+                  <span style={{ fontSize: '15px' }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#94A3B8', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.05em', textTransform: 'uppercase' }}>{item.label}</div>
+                    <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, marginTop: '2px' }}>{item.val}</div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* VS divider */}
-            <div style={{ background: '#02040A', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px', borderLeft: '1px solid #192436', borderRight: '1px solid #192436' }}>
-              <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '18px', fontWeight: 800, color: '#364A62', letterSpacing: '-0.02em', writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}>VS</div>
+            <div style={{ background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px', borderLeft: '1px solid #192436', borderRight: '1px solid #192436' }}>
+              <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '20px', fontWeight: 800, color: '#CBD5E1', writingMode: 'vertical-lr', transform: 'rotate(180deg)', letterSpacing: '0.05em' }}>VS</div>
             </div>
 
-            {/* Depois */}
-            <div style={{ background: 'linear-gradient(135deg,rgba(197,24,58,.04),rgba(124,58,237,.03))', padding: '32px 28px' }}>
-              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px', fontWeight: 600 }}>Com NOCTURN.AI</div>
+            <div style={{ background: 'linear-gradient(135deg,rgba(197,24,58,.05),rgba(124,58,237,.04))', padding: '32px 28px' }}>
+              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#C5183A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '22px', fontWeight: 600 }}>Com NOCTURN.AI</div>
               {[
                 { label: 'Roteiro', val: '30 segundos — GPT-4o', icon: '⚡' },
                 { label: 'Narração', val: 'OpenAI TTS automático', icon: '🤖' },
@@ -320,11 +510,11 @@ export default function Home() {
                 { label: 'Frequência', val: 'Ilimitado no Enterprise', icon: '🚀' },
                 { label: 'Custo mensal', val: 'A partir de R$47/mês', icon: '💚' },
               ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: i < 5 ? '1px solid rgba(255,255,255,.04)' : 'none' }}>
-                  <span style={{ fontSize: '16px', lineHeight: 1 }}>{item.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', color: '#C5183A', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.04em', textTransform: 'uppercase' }}>{item.label}</div>
-                    <div style={{ fontSize: '13px', color: '#ECF2FA', fontWeight: 600, marginTop: '2px' }}>{item.val}</div>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: i < 5 ? '1px solid rgba(0,0,0,.05)' : 'none' }}>
+                  <span style={{ fontSize: '15px' }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#C5183A', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.05em', textTransform: 'uppercase' }}>{item.label}</div>
+                    <div style={{ fontSize: '13px', color: '#0F172A', fontWeight: 600, marginTop: '2px' }}>{item.val}</div>
                   </div>
                 </div>
               ))}
@@ -332,104 +522,104 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── DOR ── */}
+        {/* ── COMO FUNCIONA ── */}
         <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '1000px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 500 }}>O problema</div>
-            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(26px,4vw,44px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1, color: '#ECF2FA', maxWidth: '620px', margin: '0 auto' }}>
-              Você sabe que dark channels faturam.<br />
-              <span style={{ color: '#6E8099' }}>O problema é a execução.</span>
-            </h2>
+          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 600 }}>Como funciona</div>
+            <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(28px,4vw,52px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: '#0F172A' }}>Três passos.<br />Um vídeo publicado.</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: '10px' }}>
+
+          <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
             {[
-              { icon: '😰', title: 'Aparecer na câmera não é opção', desc: 'Privacidade, timidez ou preferência. Mas todos os tutoriais ensinam a aparecer.' },
-              { icon: '⏳', title: 'Editar vídeo leva horas', desc: 'CapCut, Premiere, DaVinci. Curva enorme para um vídeo de 10 minutos.' },
-              { icon: '✍️', title: 'Roteiro é a parte mais difícil', desc: 'Gancho, estrutura, ritmo — escrever roteiro é uma habilidade separada.' },
-              { icon: '💸', title: 'Contratar editor custa caro', desc: 'R$200–500 por vídeo. Para 3 vídeos por semana, inviabiliza o negócio.' },
-              { icon: '🎙️', title: 'Locução profissional é inacessível', desc: 'Microfone, tratamento acústico, horas de gravação para uma voz decente.' },
-              { icon: '📉', title: 'Consistência é impossível', desc: 'Produção manual não escala. Um criador sozinho consegue 1–2 vídeos por semana.' },
-            ].map((item, i) => (
-              <div key={i} className="pain-item" style={{ background: '#080D1A', border: '1px solid #192436', borderRadius: '14px', padding: '22px 20px', display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <div style={{ fontSize: '24px', flexShrink: 0, lineHeight: 1, marginTop: '2px' }}>{item.icon}</div>
-                <div>
-                  <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '14px', fontWeight: 700, color: '#ECF2FA', letterSpacing: '-0.02em', marginBottom: '5px' }}>{item.title}</div>
-                  <div style={{ fontSize: '12px', color: '#6E8099', lineHeight: 1.65 }}>{item.desc}</div>
-                </div>
+              { n: '01', icon: '✍️', title: 'Digite o tema', desc: 'Qualquer nicho dark: conspiração, true crime, mistério, crypto, terror. Em português, sem saber inglês.' },
+              { n: '02', icon: '⚡', title: 'IA trabalha por você', desc: 'GPT-4o escreve o roteiro. TTS gera a voz grave. Pexels busca imagens por cena. Tudo em menos de 2 minutos.' },
+              { n: '03', icon: '🎬', title: 'Baixe e publique', desc: 'Player com legenda sincronizada, narração e download WebM. Pronto para YouTube, TikTok e Reels.' },
+            ].map((step, i) => (
+              <div key={i} className="step-card" style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid #192436', borderRadius: '18px', padding: '28px 24px', position: 'relative', overflow: 'hidden', backdropFilter: 'blur(8px)' }}>
+                <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '72px', fontWeight: 800, color: 'rgba(197,24,58,.05)', position: 'absolute', bottom: '-16px', right: '14px', lineHeight: 1, pointerEvents: 'none', letterSpacing: '-0.05em' }}>{step.n}</div>
+                <div style={{ fontSize: '28px', marginBottom: '16px', lineHeight: 1 }}>{step.icon}</div>
+                <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '17px', fontWeight: 700, letterSpacing: '-0.03em', color: '#0F172A', marginBottom: '10px' }}>{step.title}</div>
+                <div style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.75 }}>{step.desc}</div>
               </div>
             ))}
           </div>
+          <div style={{ textAlign: 'center', marginTop: '44px' }}>
+            <Link href="/register" className="cta-btn" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '14px 40px', borderRadius: '11px', fontWeight: 700, fontSize: '15px', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 6px 28px rgba(197,24,58,.35)' }}>
+              Testar agora — é de graça →
+            </Link>
+          </div>
         </section>
 
-        {/* ── NÚMEROS ── */}
-        <section id="stats-section" style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px' }}>
-          <div style={{ maxWidth: '960px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '2px', borderRadius: '16px', overflow: 'hidden', border: '1px solid #192436' }}>
+        {/* ── STATS ── */}
+        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px' }}>
+          <div className="stats-grid" style={{ maxWidth: '960px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '2px', borderRadius: '18px', overflow: 'hidden', border: '1px solid #192436' }}>
             {[
               { value: '< 3min', label: 'por vídeo', sub: 'do prompt ao arquivo' },
               { value: '2.4M+', label: 'views geradas', sub: 'pelos nossos criadores' },
               { value: 'R$0,97', label: 'por vídeo', sub: 'no plano Pro' },
               { value: '7 dias', label: 'de garantia', sub: 'devolução total, sem perguntas' },
             ].map((s, i) => (
-              <div key={i} style={{ background: '#080D1A', padding: '28px 16px', textAlign: 'center', borderRight: i < 3 ? '1px solid #192436' : 'none' }}>
-                <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(22px,3vw,36px)', fontWeight: 800, color: '#ECF2FA', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '6px' }}>{s.value}</div>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#C5183A', marginBottom: '3px' }}>{s.label}</div>
-                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#364A62' }}>{s.sub}</div>
+              <div key={i} style={{ background: 'rgba(255,255,255,0.97)', padding: '32px 16px', textAlign: 'center', borderRight: i < 3 ? '1px solid #192436' : 'none' }}>
+                <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(22px,3vw,40px)', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.045em', lineHeight: 1, marginBottom: '6px' }}>{s.value}</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#C5183A', marginBottom: '4px', fontFamily: "'Space Grotesk',sans-serif" }}>{s.label}</div>
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8' }}>{s.sub}</div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ── COMO FUNCIONA ── */}
-        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '960px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '52px' }}>
-            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 500 }}>Como funciona</div>
-            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(28px,4vw,46px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1, color: '#ECF2FA' }}>Três passos.<br />Um vídeo publicado.</h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr', alignItems: 'start', gap: '0' }}>
-            {[
-              { n: '01', icon: '✍️', title: 'Digite o tema', desc: 'Qualquer nicho dark: conspiração, true crime, mistério, crypto, terror. Em português, sem precisar saber inglês.' },
-              { n: '02', icon: '⚡', title: 'IA trabalha por você', desc: 'GPT-4o escreve o roteiro. TTS gera a voz grave. Pexels busca imagens por cena. Tudo automático em 2 minutos.' },
-              { n: '03', icon: '🎬', title: 'Baixe e publique', desc: 'Player com legenda karaoke sincronizada, narração e download. Pronto para YouTube, TikTok e Reels.' },
-            ].map((step, i) => (
-              <>
-                <div key={step.n} className="step-card" style={{ background: '#080D1A', border: '1px solid #192436', borderRadius: '16px', padding: '28px 24px', position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '64px', fontWeight: 800, color: 'rgba(197,24,58,.05)', position: 'absolute', bottom: '-10px', right: '12px', lineHeight: 1, pointerEvents: 'none' }}>{step.n}</div>
-                  <div style={{ fontSize: '28px', marginBottom: '14px', lineHeight: 1 }}>{step.icon}</div>
-                  <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '15px', fontWeight: 700, letterSpacing: '-0.025em', color: '#ECF2FA', marginBottom: '8px' }}>{step.title}</div>
-                  <div style={{ fontSize: '12px', color: '#6E8099', lineHeight: 1.7 }}>{step.desc}</div>
-                </div>
-                {i < 2 && (
-                  <div key={`arr-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', paddingTop: '28px' }}>
-                    <div style={{ color: '#364A62', fontSize: '22px' }}>→</div>
+        {/* ── SOCIAL PROOF BAR ── */}
+        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 64px', maxWidth: '960px', margin: '0 auto' }}>
+          <div style={{ background: 'linear-gradient(135deg,rgba(197,24,58,.06),rgba(124,58,237,.04))', border: '1px solid rgba(197,24,58,.15)', borderRadius: '18px', padding: '28px 36px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '32px', flexWrap: 'wrap' }}>
+            {/* Avatar stack */}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ display: 'flex', marginRight: '12px' }}>
+                {['#C5183A','#7C3AED','#059669','#D97706','#C5183A'].map((c,i) => (
+                  <div key={i} style={{ width: '32px', height: '32px', borderRadius: '50%', background: `linear-gradient(135deg,${c},#02040A)`, border: '2px solid #02040A', marginLeft: i === 0 ? '0' : '-8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: '#fff', zIndex: 5 - i }}>
+                    {['R','C','D','T','M'][i]}
                   </div>
-                )}
-              </>
-            ))}
-          </div>
-          <div style={{ textAlign: 'center', marginTop: '40px' }}>
-            <Link href="/register" className="cta-red" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '14px 40px', borderRadius: '10px', fontWeight: 700, fontSize: '15px', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 6px 28px rgba(197,24,58,.35)' }}>
-              Testar agora — é de graça →
-            </Link>
+                ))}
+              </div>
+              <div>
+                <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '14px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>+1.200 criadores</div>
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', marginTop: '2px' }}>já usam o NOCTURN.AI</div>
+              </div>
+            </div>
+            <div style={{ width: '1px', height: '36px', background: '#E2E8F0' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '22px', fontWeight: 800, letterSpacing: '-0.04em', color: '#0F172A', lineHeight: 1 }}>2.4M+</div>
+              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', marginTop: '4px' }}>views geradas</div>
+            </div>
+            <div style={{ width: '1px', height: '36px', background: '#E2E8F0' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '22px', fontWeight: 800, letterSpacing: '-0.04em', color: '#0F172A', lineHeight: 1 }}>&lt; 3min</div>
+              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', marginTop: '4px' }}>tempo por vídeo</div>
+            </div>
+            <div style={{ width: '1px', height: '36px', background: '#E2E8F0' }} />
+            <div style={{ display: 'flex', gap: '5px' }}>
+              {[1,2,3,4,5].map(s => <span key={s} style={{ color: '#D97706', fontSize: '16px' }}>★</span>)}
+              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#64748B', marginLeft: '6px', alignSelf: 'center' }}>4.9/5</span>
+            </div>
           </div>
         </section>
 
         {/* ── DEPOIMENTOS ── */}
-        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '1040px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 500 }}>Resultados reais</div>
-            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(28px,4vw,46px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1, color: '#ECF2FA' }}>O que os criadores estão fazendo.</h2>
+        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '1060px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '52px' }}>
+            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 600 }}>Resultados reais</div>
+            <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(28px,4vw,52px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: '#0F172A' }}>O que os criadores estão fazendo.</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: '14px' }}>
             {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="testimonial-card" style={{ background: '#080D1A', border: '1px solid #192436', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', gap: '3px' }}>{[1,2,3,4,5].map(s => <span key={s} style={{ color: '#D97706', fontSize: '12px' }}>★</span>)}</div>
-                <p style={{ fontSize: '13px', color: '#6E8099', lineHeight: 1.75, flex: 1, fontStyle: 'italic' }}>"{t.text}"</p>
-                <div style={{ background: `rgba(${t.color === '#C5183A' ? '197,24,58' : t.color === '#7C3AED' ? '124,58,237' : t.color === '#D97706' ? '217,119,6' : '5,150,105'},.08)`, border: `1px solid ${t.color}30`, borderRadius: '8px', padding: '8px 12px', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: t.color, fontWeight: 700, textAlign: 'center' }}>{t.metric}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderTop: '1px solid #192436', paddingTop: '12px' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: `linear-gradient(135deg,${t.color},#02040A)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: '#fff', flexShrink: 0 }}>{t.avatar}</div>
+              <div key={i} className="testimonial-card" style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid #192436', borderRadius: '18px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', backdropFilter: 'blur(8px)' }}>
+                <div style={{ display: 'flex', gap: '3px' }}>{[1,2,3,4,5].map(s => <span key={s} style={{ color: '#D97706', fontSize: '13px' }}>★</span>)}</div>
+                <p style={{ fontSize: '14px', color: '#64748B', lineHeight: 1.75, flex: 1 }}>"{t.text}"</p>
+                <div style={{ background: `rgba(${t.color === '#C5183A' ? '197,24,58' : t.color === '#7C3AED' ? '124,58,237' : t.color === '#D97706' ? '217,119,6' : '5,150,105'},.08)`, border: `1px solid ${t.color}28`, borderRadius: '8px', padding: '8px 12px', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: t.color, fontWeight: 700, textAlign: 'center' }}>{t.metric}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderTop: '1px solid #192436', paddingTop: '14px' }}>
+                  <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: `linear-gradient(135deg,${t.color},#02040A)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', flexShrink: 0 }}>{t.avatar}</div>
                   <div>
-                    <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '13px', fontWeight: 700, color: '#ECF2FA', letterSpacing: '-0.01em' }}>{t.name}</div>
-                    <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#364A62', marginTop: '1px' }}>{t.role}</div>
+                    <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '14px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>{t.name}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', marginTop: '2px' }}>{t.role}</div>
                   </div>
                 </div>
               </div>
@@ -439,12 +629,11 @@ export default function Home() {
 
         {/* ── PRICING ── */}
         <section id="planos" style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '1000px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 500 }}>Planos</div>
-            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(28px,4vw,46px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1, color: '#ECF2FA', marginBottom: '12px' }}>1 crédito = 1 vídeo completo</h2>
-            <p style={{ fontSize: '14px', color: '#6E8099' }}>Roteiro + voz + edição. Renova todo mês. Sem fidelidade.</p>
-            {/* Urgency badge */}
-            <div style={{ marginTop: '16px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(197,24,58,.08)', border: '1px solid rgba(197,24,58,.2)', color: '#C5183A', padding: '6px 16px', borderRadius: '20px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', fontWeight: 600 }}>
+          <div style={{ textAlign: 'center', marginBottom: '52px' }}>
+            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 600 }}>Planos</div>
+            <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(28px,4vw,52px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: '#0F172A', marginBottom: '12px' }}>1 crédito = 1 vídeo completo</h2>
+            <p style={{ fontSize: '14px', color: '#64748B', fontFamily: "'Inter',sans-serif" }}>Roteiro + voz + edição. Renova todo mês. Sem fidelidade.</p>
+            <div style={{ marginTop: '18px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(197,24,58,.08)', border: '1px solid rgba(197,24,58,.2)', color: '#C5183A', padding: '6px 16px', borderRadius: '20px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', fontWeight: 600 }}>
               <span style={{ animation: 'pulse 1.5s infinite', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#C5183A' }} />
               Preço de lançamento · Pode subir a qualquer momento
             </div>
@@ -452,56 +641,55 @@ export default function Home() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: '16px', marginBottom: '24px' }}>
             {PLANS.map((plan, i) => (
-              <div key={i} className="plan-card" style={{ background: '#080D1A', border: `1px solid ${plan.popular ? 'rgba(197,24,58,.4)' : '#192436'}`, borderRadius: '18px', padding: '28px', position: 'relative', display: 'flex', flexDirection: 'column', boxShadow: plan.popular ? '0 0 60px rgba(197,24,58,.09)' : 'none' }}>
+              <div key={i} className="plan-card" style={{ background: 'rgba(255,255,255,0.95)', border: `1px solid ${plan.popular ? 'rgba(197,24,58,.45)' : '#E2E8F0'}`, borderRadius: '20px', padding: '30px', position: 'relative', display: 'flex', flexDirection: 'column', boxShadow: plan.popular ? '0 0 80px rgba(197,24,58,.1)' : 'none', backdropFilter: 'blur(8px)' }}>
                 {plan.popular && (
-                  <div style={{ position: 'absolute', top: '-13px', left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', fontSize: '9px', fontWeight: 700, padding: '4px 18px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.08em', boxShadow: '0 4px 14px rgba(197,24,58,.4)' }}>
+                  <div style={{ position: 'absolute', top: '-13px', left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', fontSize: '9px', fontWeight: 700, padding: '4px 18px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.1em', boxShadow: '0 4px 16px rgba(197,24,58,.45)', fontFamily: "'JetBrains Mono',monospace" }}>
                     MAIS POPULAR
                   </div>
                 )}
-                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: plan.color, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 600 }}>{plan.name}</div>
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: plan.color, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: '16px', fontWeight: 600 }}>{plan.name}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '4px' }}>
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '44px', fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1, color: '#ECF2FA' }}>R${plan.price}</span>
-                  <span style={{ fontSize: '13px', color: '#364A62' }}>/mês</span>
+                  <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '48px', fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1, color: '#0F172A' }}>R${plan.price}</span>
+                  <span style={{ fontSize: '13px', color: '#94A3B8' }}>/mês</span>
                 </div>
-                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#6E8099', marginBottom: '20px' }}>
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#64748B', marginBottom: '22px' }}>
                   {plan.credits === 99999 ? 'vídeos ilimitados' : `R$${plan.perVideo} por vídeo`}
                 </div>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '22px', flex: 1 }}>
+                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '24px', flex: 1 }}>
                   {plan.features.map((f, j) => (
-                    <li key={j} style={{ fontSize: '13px', color: '#6E8099', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <li key={j} style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span style={{ color: plan.color, fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>✓</span>{f}
                     </li>
                   ))}
                 </ul>
-                <a href={plan.url} className={plan.popular ? 'cta-red' : ''} style={{ display: 'block', textAlign: 'center', padding: '13px', borderRadius: '10px', fontWeight: 700, fontSize: '14px', fontFamily: "'Space Grotesk',sans-serif", letterSpacing: '-0.02em', background: plan.popular ? 'linear-gradient(135deg,#C5183A,#8B0A22)' : 'transparent', border: plan.popular ? 'none' : `1px solid ${plan.color}`, color: plan.popular ? '#fff' : plan.color, boxShadow: plan.popular ? '0 4px 20px rgba(197,24,58,.3)' : 'none', marginBottom: '10px', transition: 'opacity .15s' }}>
+                <a href={plan.url} className={plan.popular ? 'cta-btn' : ''} style={{ display: 'block', textAlign: 'center', padding: '13px', borderRadius: '10px', fontWeight: 700, fontSize: '14px', fontFamily: "'Space Grotesk',sans-serif", letterSpacing: '-0.02em', background: plan.popular ? 'linear-gradient(135deg,#C5183A,#8B0A22)' : 'transparent', border: plan.popular ? 'none' : `1px solid ${plan.color}50`, color: plan.popular ? '#fff' : plan.color, boxShadow: plan.popular ? '0 4px 22px rgba(197,24,58,.32)' : 'none', marginBottom: '12px', transition: 'opacity .15s' }}>
                   Assinar {plan.name} →
                 </a>
-                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#364A62', textAlign: 'center' }}>
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', textAlign: 'center' }}>
                   7 dias garantia · cancele quando quiser
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Free trial CTA below plans */}
-          <div style={{ textAlign: 'center', marginTop: '8px' }}>
-            <Link href="/register" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '12px', color: '#6E8099', borderBottom: '1px solid #364A62', paddingBottom: '1px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <Link href="/register" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '12px', color: '#64748B', borderBottom: '1px solid #364A62', paddingBottom: '1px' }}>
               Não quer pagar ainda? Comece com 1 vídeo grátis →
             </Link>
           </div>
         </section>
 
         {/* ── GARANTIA ── */}
-        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '700px', margin: '0 auto' }}>
-          <div style={{ background: 'linear-gradient(135deg,rgba(5,150,105,.06),rgba(5,150,105,.02))', border: '1px solid rgba(5,150,105,.2)', borderRadius: '20px', padding: '48px 40px', textAlign: 'center' }}>
-            <div style={{ fontSize: '52px', marginBottom: '16px', lineHeight: 1 }}>🛡️</div>
-            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(22px,3vw,32px)', fontWeight: 800, letterSpacing: '-0.035em', color: '#ECF2FA', marginBottom: '14px', lineHeight: 1.15 }}>Garantia incondicional de 7 dias</h2>
-            <p style={{ fontSize: '14px', color: '#6E8099', lineHeight: 1.8, maxWidth: '480px', margin: '0 auto 20px' }}>
-              Se por qualquer motivo você não ficar satisfeito nos primeiros 7 dias — <strong style={{ color: '#ECF2FA' }}>devolvemos 100% do valor, sem perguntas, sem formulário</strong>. Reembolso em até 48h.
+        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '680px', margin: '0 auto' }}>
+          <div style={{ background: 'linear-gradient(135deg,rgba(5,150,105,.07),rgba(5,150,105,.02))', border: '1px solid rgba(5,150,105,.18)', borderRadius: '22px', padding: '52px 44px', textAlign: 'center', backdropFilter: 'blur(8px)' }}>
+            <div style={{ fontSize: '56px', marginBottom: '18px', lineHeight: 1 }}>🛡️</div>
+            <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(22px,3vw,36px)', fontWeight: 800, letterSpacing: '-0.04em', color: '#0F172A', marginBottom: '14px', lineHeight: 1.1 }}>Garantia incondicional de 7 dias</h2>
+            <p style={{ fontSize: '14px', color: '#64748B', lineHeight: 1.85, maxWidth: '460px', margin: '0 auto 22px' }}>
+              Se por qualquer motivo você não ficar satisfeito nos primeiros 7 dias — <strong style={{ color: '#0F172A' }}>devolvemos 100% do valor, sem perguntas, sem formulário</strong>. Reembolso em até 48h.
             </p>
             <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', flexWrap: 'wrap' }}>
               {['Reembolso em 48h', 'Sem burocracia', 'Sem perguntas'].map((t, i) => (
-                <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#059669', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#10B981', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <span>✓</span>{t}
                 </span>
               ))}
@@ -509,11 +697,31 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ── TRUST BADGES ── */}
+        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 60px', maxWidth: '720px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
+            {[
+              { icon: '🔒', label: 'Pagamento Seguro', sub: 'SSL 256-bit' },
+              { icon: '🛡️', label: 'Garantia 7 dias', sub: 'Reembolso total' },
+              { icon: '⚡', label: 'Cancele quando quiser', sub: 'Sem fidelidade' },
+              { icon: '🤖', label: 'GPT-4o + OpenAI TTS', sub: 'Melhor IA do mundo' },
+            ].map((b, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(241,245,249,0.85)', border: '1px solid #192436', borderRadius: '12px', padding: '12px 18px', backdropFilter: 'blur(8px)' }}>
+                <span style={{ fontSize: '18px', lineHeight: 1 }}>{b.icon}</span>
+                <div>
+                  <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '12px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>{b.label}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', marginTop: '1px' }}>{b.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ── FAQ ── */}
         <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '720px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '44px' }}>
-            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 500 }}>Dúvidas</div>
-            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(26px,4vw,40px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1, color: '#ECF2FA' }}>Perguntas frequentes</h2>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 600 }}>Dúvidas</div>
+            <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(26px,4vw,46px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: '#0F172A' }}>Perguntas frequentes</h2>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {FAQS.map((faq, i) => <FaqItem key={i} q={faq.q} a={faq.a} />)}
@@ -521,40 +729,46 @@ export default function Home() {
         </section>
 
         {/* ── CTA FINAL ── */}
-        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 140px', textAlign: 'center', maxWidth: '700px', margin: '0 auto' }}>
-          <div style={{ background: 'linear-gradient(160deg,rgba(197,24,58,.09),rgba(124,58,237,.05))', border: '1px solid rgba(197,24,58,.22)', borderRadius: '24px', padding: '72px 40px', position: 'relative', overflow: 'hidden' }}>
-            <div aria-hidden style={{ position: 'absolute', top: '-40%', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle,rgba(197,24,58,.08) 0%,transparent 60%)', pointerEvents: 'none' }} />
-            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '18px', fontWeight: 500, position: 'relative' }}>Comece hoje</div>
-            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 'clamp(32px,5vw,56px)', fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.05, marginBottom: '16px', color: '#ECF2FA', position: 'relative' }}>
+        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 140px', textAlign: 'center', maxWidth: '720px', margin: '0 auto' }}>
+          <div style={{ background: 'linear-gradient(160deg,rgba(197,24,58,.1),rgba(124,58,237,.06))', border: '1px solid rgba(197,24,58,.2)', borderRadius: '26px', padding: '80px 44px', position: 'relative', overflow: 'hidden', backdropFilter: 'blur(16px)' }}>
+            <div aria-hidden style={{ position: 'absolute', top: '-50%', left: '50%', transform: 'translateX(-50%)', width: '700px', height: '700px', background: 'radial-gradient(circle,rgba(197,24,58,.1) 0%,transparent 60%)', pointerEvents: 'none' }} />
+            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '20px', fontWeight: 600, position: 'relative' }}>Comece hoje</div>
+            <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(36px,5.5vw,64px)', fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.0, marginBottom: '18px', color: '#0F172A', position: 'relative' }}>
               Seu canal começa<br /><span style={{ color: '#C5183A' }}>agora.</span>
             </h2>
-            <p style={{ fontSize: '15px', color: '#6E8099', marginBottom: '36px', lineHeight: 1.6, position: 'relative' }}>
+            <p style={{ fontSize: '15px', color: '#64748B', marginBottom: '40px', lineHeight: 1.7, position: 'relative', maxWidth: '440px', margin: '0 auto 40px' }}>
               Sem câmera. Sem aparecer. Sem experiência.<br />
-              <strong style={{ color: '#ECF2FA' }}>1 vídeo grátis para você testar agora.</strong>
+              <strong style={{ color: '#0F172A' }}>1 vídeo grátis para você testar agora.</strong>
             </p>
-            <Link href="/register" className="cta-red" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '18px 54px', borderRadius: '12px', fontWeight: 700, fontSize: '18px', letterSpacing: '-0.02em', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 8px 40px rgba(197,24,58,.45)', marginBottom: '20px', position: 'relative' }}>
+            <Link href="/register" className="cta-btn" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '18px 56px', borderRadius: '13px', fontWeight: 700, fontSize: '18px', letterSpacing: '-0.02em', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 8px 44px rgba(197,24,58,.48)', marginBottom: '22px', position: 'relative' }}>
               Criar conta e gerar grátis →
             </Link>
-            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#364A62', letterSpacing: '0.03em', position: 'relative' }}>
+            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#94A3B8', letterSpacing: '0.03em', position: 'relative' }}>
               Sem cartão · 1 vídeo grátis · 7 dias de garantia
             </div>
           </div>
         </section>
 
         {/* ── FOOTER ── */}
-        <footer style={{ borderTop: '1px solid #192436', padding: '32px 24px', position: 'relative', zIndex: 1, marginBottom: '56px' }}>
-          <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <footer style={{ borderTop: '1px solid rgba(0,0,0,.06)', padding: '32px 24px', position: 'relative', zIndex: 1, marginBottom: '56px' }}>
+          <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '24px', height: '24px', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, color: '#fff', fontSize: '11px' }}>N</div>
-              <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '13px', fontWeight: 700, letterSpacing: '-0.025em' }}>NOCTURN.AI</span>
+              <div style={{ width: '26px', height: '26px', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, color: '#fff', fontSize: '12px' }}>N</div>
+              <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '14px', fontWeight: 800, letterSpacing: '-0.04em' }}>NOCTURN.AI</span>
             </div>
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Link href="#planos" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Planos</Link>
-              <Link href="/login" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Entrar</Link>
-              <Link href="/register" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Criar conta</Link>
-              <Link href="/termos" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Termos</Link>
-              <Link href="/privacidade" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Privacidade</Link>
-              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>© 2025 NOCTURN.AI</span>
+            <div style={{ display: 'flex', gap: '22px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {[
+                { label: 'Planos', href: '#planos' },
+                { label: 'Entrar', href: '/login' },
+                { label: 'Criar conta', href: '/register' },
+                { label: 'Termos', href: '/termos' },
+                { label: 'Privacidade', href: '/privacidade' },
+              ].map((link, i) => (
+                <Link key={i} href={link.href} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#94A3B8', transition: 'color .15s' }}>
+                  {link.label}
+                </Link>
+              ))}
+              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#94A3B8' }}>© 2025 NOCTURN.AI</span>
             </div>
           </div>
         </footer>
