@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
-import { getUsers, saveUsers } from '../../../lib/db'
+import { getUsers, saveUser } from '../../../lib/db'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (idx === -1) return res.status(404).json({ error: 'Usuario nao encontrado' })
 
     delete users[idx].youtube
-    await saveUsers(users)
+    await saveUser(users[idx])
     res.status(200).json({ ok: true })
   } catch (e: any) {
     res.status(500).json({ error: e.message })

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
-import { getUsers, saveUsers } from '../../../lib/db'
+import { getUsers, saveUser } from '../../../lib/db'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code, state: token, error } = req.query
@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       videoCount: channel?.statistics?.videoCount || '0',
       connectedAt: new Date().toISOString(),
     }
-    await saveUsers(users)
+    await saveUser(users[idx])
 
     res.redirect('/dashboard?view=canal&youtube_connected=1')
   } catch (e: any) {

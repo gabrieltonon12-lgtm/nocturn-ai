@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
-import { getUsers, saveUsers, getVideos, ensureAdmin } from '../../../lib/db'
+import { getUsers, saveUser, getVideos, ensureAdmin } from '../../../lib/db'
 
 // Sistema de Rewards — economia balanceada
 // Regras para não quebrar receita:
@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const viewCount = parseInt(views) || 0
         if (viewCount < 0 || viewCount > 10000000) return res.status(400).json({ error: 'Views inválidas' })
         users[idx].totalViews = (user.totalViews || 0) + viewCount
-        await saveUsers(users)
+        await saveUser(users[idx])
         return res.status(200).json({ ok: true, totalViews: users[idx].totalViews })
       }
 
@@ -109,7 +109,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (milestone.credits > 0 && bonusThisMonth >= MAX_BONUS_CREDITS_PER_MONTH) {
           // Desbloqueia o badge mas não dá crédito (cap atingido)
           users[idx].unlockedRewards = [...unlockedIds, rewardId]
-          await saveUsers(users)
+          await saveUser(users[idx])
           return res.status(200).json({ ok: true, creditsEarned: 0, badge: true, message: 'Badge desbloqueado! Limite de créditos bônus do mês atingido.' })
         }
 
@@ -120,7 +120,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           users[idx].bonusCreditsMonth = currentMonth
           users[idx].bonusCreditsGiven = bonusThisMonth + milestone.credits
         }
-        await saveUsers(users)
+        await saveUser(users[idx])
 
         return res.status(200).json({ 
           ok: true, 

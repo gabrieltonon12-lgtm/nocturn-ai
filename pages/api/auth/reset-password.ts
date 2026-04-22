@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { Redis } from '@upstash/redis'
 import bcrypt from 'bcryptjs'
-import { getUsers, saveUsers } from '../../../lib/db'
+import { getUsers, saveUser } from '../../../lib/db'
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (idx === -1) return res.status(404).json({ error: 'Usuário não encontrado' })
 
     users[idx].password = await bcrypt.hash(password, 10)
-    await saveUsers(users)
+    await saveUser(users[idx])
     await redis.del(`reset:${token}`)
 
     res.status(200).json({ ok: true })

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
-import { getUsers, saveUsers } from '../../../lib/db'
+import { getUsers, saveUser, deleteUser } from '../../../lib/db'
 
 const JWT = process.env.JWT_SECRET || 'nocturnai_jwt_super_secret_2025_xK9mP'
 
@@ -47,14 +47,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         users[idx].credits = (users[idx].credits ?? 0) + (parseInt(value) || 10)
         break
       case 'delete':
-        users.splice(idx, 1)
-        await saveUsers(users)
+        await deleteUser(users[idx].id, users[idx].email)
         return res.status(200).json({ ok: true })
       default:
         return res.status(400).json({ error: 'Ação inválida' })
     }
 
-    await saveUsers(users)
+    await saveUser(users[idx])
     return res.status(200).json({ ok: true, user: { ...users[idx], password: undefined } })
   }
 

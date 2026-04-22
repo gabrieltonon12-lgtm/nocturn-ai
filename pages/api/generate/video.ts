@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 
 export const config = { maxDuration: 300 }
 import RunwayML from '@runwayml/sdk'
-import { getUsers, saveUsers, saveVideo, generateId, ensureAdmin } from '../../../lib/db'
+import { getUsers, saveUser, saveVideo, generateId, ensureAdmin } from '../../../lib/db'
 
 // OpenAI TTS voices
 const OPENAI_VOICES: Record<string,string> = {
@@ -267,7 +267,7 @@ RETORNE APENAS JSON válido, sem markdown:
     // ── STEP 4: Salva e retorna ───────────────────────────────────────────
     users[idx].credits = Math.max(0, (user.credits ?? 1) - 1)
     users[idx].videoCount = (user.videoCount ?? 0) + 1
-    await saveUsers(users)
+    await saveUser(users[idx])
 
     const video = {
       id: generateId(),

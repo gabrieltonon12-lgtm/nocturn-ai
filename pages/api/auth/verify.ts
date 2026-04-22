@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { Redis } from '@upstash/redis'
-import { getUsers, saveUsers } from '../../../lib/db'
+import { getUsers, saveUser } from '../../../lib/db'
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (idx === -1) return res.status(404).json({ error: 'Usuário não encontrado' })
 
   users[idx].verified = true
-  await saveUsers(users)
+  await saveUser(users[idx])
   await redis.del(`verify:${token}`)
 
   res.status(200).json({ ok: true, message: 'Email verificado com sucesso!' })

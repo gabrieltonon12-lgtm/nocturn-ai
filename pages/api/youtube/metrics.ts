@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
-import { getUsers, saveUsers } from '../../../lib/db'
+import { getUsers, saveUser } from '../../../lib/db'
 
 async function refreshAccessToken(refreshToken: string): Promise<string | null> {
   try {
@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         accessToken = newToken
         users[idx].youtube.accessToken = newToken
         users[idx].youtube.expiresAt = Date.now() + 3600 * 1000
-        await saveUsers(users)
+        await saveUser(users[idx])
       }
     }
 

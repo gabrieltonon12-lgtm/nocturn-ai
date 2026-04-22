@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { getUsers, saveUsers, generateId, ensureAdmin } from '../../../lib/db'
+import { getUsers, saveUser, generateId, ensureAdmin } from '../../../lib/db'
 
 const FB_PIXEL_ID = '1253914883109476'
 const FB_ACCESS_TOKEN = 'EAASpHpI4sXABRLt0ZBKS6oKZB0btCx9f0zcSZAM1yV1FmYYMtIjBNf8Y7ZCEJDYTS5JQJnzZAUtvt5YKU5obJZCwOOwq0RZA5IEtkyffgEpzPyZAVYWUiWlzoQWtPU8tD1JaAeUEriQajaYqpKUAFCQcBzUWdAubNZCieFIWZCZAljLzZAC1PNeR59zNzQ8Jx6n9ZAQZDZD'
@@ -155,20 +155,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const isNew = idx === -1
       const tempPassword = Math.random().toString(36).substring(2,8).toUpperCase() + Math.floor(Math.random()*100)
 
+      let targetUser: any
       if (isNew) {
-        users.push({
+        targetUser = {
           id: generateId(), name, email,
           password: bcrypt.hashSync(tempPassword, 10),
           plan, credits: credits[plan], role: 'user',
           active: true, videoCount: 0,
           createdAt: new Date().toISOString(),
-        })
+        }
       } else {
         users[idx].active = true
         users[idx].plan = plan
         users[idx].credits = credits[plan]
+        targetUser = users[idx]
       }
-      await saveUsers(users)
+      await saveUser(targetUser)
 
       // Fire pixels
       if (email) {
@@ -183,11 +185,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (event.includes('cancel') || event.includes('refund')) {
-      if (idx !== -1) { users[idx].active = false; users[idx].credits = 0; await saveUsers(users) }
+      if (idx !== -1) { users[idx].active = false; users[idx].credits = 0; await saveUser(users[idx]) }
     }
 
     if (event.includes('renew') || event.includes('rebill')) {
-      if (idx !== -1) { users[idx].credits = credits[users[idx].plan] || 20; users[idx].active = true; await saveUsers(users) }
+      if (idx !== -1) { users[idx].credits = credits[users[idx].plan] || 20; users[idx].active = true; await saveUser(users[idx]) }
     }
 
     res.status(200).json({ ok: true })

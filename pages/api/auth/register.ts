@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { Redis } from '@upstash/redis'
-import { getUsers, saveUsers, generateId, ensureAdmin } from '../../../lib/db'
+import { getUsers, saveUser, generateId, ensureAdmin } from '../../../lib/db'
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -61,17 +61,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       referredBy: ref || null,
       createdAt: new Date().toISOString(),
     }
-    users.push(user)
+    await saveUser(user)
 
     // Reward referrer +5 credits
     if (ref) {
       const referrerIdx = users.findIndex((u: any) => u.referralCode === ref)
       if (referrerIdx !== -1) {
         users[referrerIdx].credits = (users[referrerIdx].credits ?? 0) + 5
+        await saveUser(users[referrerIdx])
       }
     }
-
-    await saveUsers(users)
 
     // Send verification email (async, don't block registration)
     const verifyToken = crypto.randomBytes(32).toString('hex')

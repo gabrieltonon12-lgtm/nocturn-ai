@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import Link from 'next/link'
 import { GetServerSideProps } from 'next'
-import { getVideos } from '../../lib/db'
+import { getVideoById } from '../../lib/db'
 
 interface Props { video: any | null }
 
@@ -110,8 +110,7 @@ export default function PublicVideo({ video }: Props) {
 export const getServerSideProps: GetServerSideProps = async ({ params }) => {
   try {
     const id = params?.id as string
-    const videos = await getVideos()
-    const video = videos.find((v: any) => v.id === id)
+    const video = await getVideoById(id)
     if (!video) return { props: { video: null } }
     // Strip audioBase64 for public page (too large for SSR)
     const { audioBase64: _, ...safe } = video
