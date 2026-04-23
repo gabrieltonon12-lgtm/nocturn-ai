@@ -259,9 +259,24 @@ export default function Dashboard() {
     setPreviewLoading(false)
   }
 
+  const fireNotification = (title: string, body: string, icon = '/favicon.svg') => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    if (Notification.permission !== 'granted') return
+    try {
+      const n = new Notification(title, { body, icon, tag: 'nocturn-video' })
+      n.onclick = () => { window.focus(); n.close() }
+    } catch {}
+  }
+
   const handleGenerate = async (preScript?: any) => {
     if (!prompt.trim()) return
     if ((user?.credits ?? 0) <= 0 && user?.plan !== 'enterprise') { setShowUpgradeModal(true); return }
+
+    // Request notification permission on first generate click
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+
     setGenerating(true); setProgress(0); setLogs([]); setGenStep(0)
     setScriptPreview(null)
     if (typeof document !== 'undefined') document.title = '⏳ Gerando seu vídeo... — NOCTURN.AI'
@@ -298,9 +313,13 @@ export default function Dashboard() {
           if (data.video.runwayError) {
             console.error('Runway falhou:', data.video.runwayError)
             showToast(`Runway indisponível — usando imagens Pexels. Erro: ${data.video.runwayError}`, 'error')
-          } else if (isFirstVideo) { setShowConfetti(true); setShowFirstVideoSuccess(true); setTimeout(()=>setShowConfetti(false),5000) }
-          else {
+            fireNotification('Vídeo gerado com aviso ⚠️', `${data.video.title || 'Seu vídeo'} ficou pronto, mas o Runway falhou — usando imagens Pexels.`)
+          } else if (isFirstVideo) {
+            setShowConfetti(true); setShowFirstVideoSuccess(true); setTimeout(()=>setShowConfetti(false),5000)
+            fireNotification('Primeiro vídeo pronto! 🎉', `${data.video.title || 'Seu vídeo'} foi gerado. Clique para assistir.`)
+          } else {
             showToast('Vídeo gerado com sucesso! 🎉', 'success')
+            fireNotification('Vídeo pronto! 🎬', `${data.video.title || 'Seu vídeo'} está pronto. Clique para assistir.`)
             // Show upsell for non-enterprise users after successful generation
             const credLeft = data.creditsRemaining
             const planMax = PLAN_CREDITS[data.user?.plan || user?.plan] || 20
@@ -317,9 +336,16 @@ export default function Dashboard() {
             setRewardToast('Novo reward: ' + eligible[0].badge + ' ' + eligible[0].label)
             setTimeout(() => setRewardToast(''), 5000)
           }
-        } else { showToast(data.error || 'Erro ao gerar vídeo. Tente novamente.', 'error') }
+        } else {
+          showToast(data.error || 'Erro ao gerar vídeo. Tente novamente.', 'error')
+          fireNotification('Erro na geração ❌', data.error || 'Ocorreu um erro. Tente novamente.')
+        }
       }, logSteps.length * 900 + 600)
-    } catch { clearInterval(iv); setGenerating(false); showToast('Erro de conexão. Verifique sua internet.', 'error') }
+    } catch {
+      clearInterval(iv); setGenerating(false)
+      showToast('Erro de conexão. Verifique sua internet.', 'error')
+      fireNotification('Erro de conexão ❌', 'Verifique sua internet e tente novamente.')
+    }
   }
 
   const handleClaimReward = async (rewardId: string) => {
