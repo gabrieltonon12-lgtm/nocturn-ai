@@ -652,7 +652,7 @@ export default function Dashboard() {
                 {view==='generator'?t('topbar.generate'):view==='videos'?t('topbar.videos'):view==='rewards'?t('topbar.rewards'):view==='settings'?'Configurações':t('topbar.billing')}
               </div>
               {view === 'generator' && (
-                <span style={{fontFamily:F.mono,fontSize:'9px',background:C.gDim,border:'1px solid rgba(22,163,74,.2)',color:C.green,padding:'3px 8px',borderRadius:'9px',fontWeight:500,letterSpacing:'0.04em'}}>GPT-4o · OpenAI TTS · Pexels</span>
+                <span style={{fontFamily:F.mono,fontSize:'9px',background:C.gDim,border:'1px solid rgba(22,163,74,.2)',color:C.green,padding:'3px 8px',borderRadius:'9px',fontWeight:500,letterSpacing:'0.04em'}}>GPT-4o · OpenAI TTS · Runway ML</span>
               )}
             </div>
             <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
@@ -738,7 +738,7 @@ export default function Dashboard() {
                       <div style={{fontFamily:F.mono,fontSize:'9px',color:C.t3}}>{t('gen.subtitle')}</div>
                     </div>
                     <div style={{display:'flex',gap:'6px'}}>
-                      {['GPT-4o','TTS','Pexels'].map(badge => (
+                      {['GPT-4o','TTS','Runway ML'].map(badge => (
                         <span key={badge} style={{fontFamily:F.mono,fontSize:'8px',background:C.raised,border:`1px solid ${C.lineHi}`,color:C.t2,padding:'3px 8px',borderRadius:'6px',letterSpacing:'0.04em'}}>
                           {badge}
                         </span>
@@ -1000,8 +1000,8 @@ export default function Dashboard() {
                         <div style={{fontFamily:F.head,fontSize:'14px',fontWeight:700,color:C.t1,marginBottom:'6px',letterSpacing:'-0.02em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lastGeneratedVideo.title||'Sem título'}</div>
                         <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}}>
                           {lastGeneratedVideo.hasAudio&&<span style={{fontFamily:F.mono,fontSize:'9px',padding:'2px 8px',borderRadius:'5px',background:C.gDim,border:'1px solid rgba(22,163,74,.2)',color:C.green,fontWeight:600}}>VOZ IA</span>}
-                          {lastGeneratedVideo.videoUrl&&<span style={{fontFamily:F.mono,fontSize:'9px',padding:'2px 8px',borderRadius:'5px',background:C.redDim,border:'1px solid rgba(110,86,207,.2)',color:C.red,fontWeight:600}}>RUNWAY MP4</span>}
-                          {lastGeneratedVideo.hasImages&&<span style={{fontFamily:F.mono,fontSize:'9px',padding:'2px 8px',borderRadius:'5px',background:C.vDim,border:`1px solid rgba(110,86,207,.15)`,color:C.violet,fontWeight:600}}>IMAGENS</span>}
+                          {lastGeneratedVideo.hasRunwayVideo&&<span style={{fontFamily:F.mono,fontSize:'9px',padding:'2px 8px',borderRadius:'5px',background:C.redDim,border:'1px solid rgba(197,24,58,.25)',color:C.red,fontWeight:600}}>RUNWAY MP4</span>}
+                          {!lastGeneratedVideo.hasRunwayVideo&&lastGeneratedVideo.hasImages&&<span style={{fontFamily:F.mono,fontSize:'9px',padding:'2px 8px',borderRadius:'5px',background:C.vDim,border:`1px solid rgba(110,86,207,.15)`,color:C.violet,fontWeight:600}}>IMAGENS</span>}
                         </div>
                         <div style={{display:'flex',gap:'8px'}}>
                           <button onClick={()=>setSelectedVideo(lastGeneratedVideo)}
@@ -1454,7 +1454,8 @@ function VideoGrid({videos, onSelect}: {videos:any[], onSelect:(v:any)=>void}) {
             </div>
             <div style={{position:'absolute',bottom:'8px',right:'8px',zIndex:2,display:'flex',gap:'4px'}}>
               {v.hasAudio&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'8px',padding:'2px 7px',borderRadius:'5px',background:'rgba(22,163,74,.88)',color:'#fff',fontWeight:600}}>VOZ</span>}
-              {v.hasImages&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'8px',padding:'2px 7px',borderRadius:'5px',background:'rgba(110,86,207,.88)',color:'#fff',fontWeight:600}}>IMG</span>}
+              {v.hasRunwayVideo&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'8px',padding:'2px 7px',borderRadius:'5px',background:'rgba(197,24,58,.88)',color:'#fff',fontWeight:600}}>RUNWAY</span>}
+              {!v.hasRunwayVideo&&v.hasImages&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'8px',padding:'2px 7px',borderRadius:'5px',background:'rgba(110,86,207,.88)',color:'#fff',fontWeight:600}}>IMG</span>}
             </div>
           </div>
 
@@ -1570,10 +1571,14 @@ function ConfettiEffect() {
 function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const audioRef = React.useRef<HTMLAudioElement>(null)
+  const runwayVideoRef = React.useRef<HTMLVideoElement>(null)
+  const subCanvasRef = React.useRef<HTMLCanvasElement>(null)
   const animRef = React.useRef<number | null>(null)
   const sceneTimingRef = React.useRef<Array<{start:number, end:number}>>([])
   const isPlayingRef = React.useRef(false)
   const loadedImgsRef = React.useRef<(HTMLImageElement|null)[]>([])
+
+  const isRunwayVideo = !!video.runwayVideoUrl
 
   const [tab, setTab] = React.useState("player")
   const [isPlaying, setIsPlaying] = React.useState(false)
@@ -1582,7 +1587,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   const [dlPct, setDlPct] = React.useState(0)
   const [dlLabel, setDlLabel] = React.useState("")
   const [loadedImgs, setLoadedImgs] = React.useState<(HTMLImageElement|null)[]>([])
-  const [imgsReady, setImgsReady] = React.useState(false)
+  const [imgsReady, setImgsReady] = React.useState(isRunwayVideo ? true : false)
   const [audioReady, setAudioReady] = React.useState(!video.audioBase64)
   const [audioDuration, setAudioDuration] = React.useState(0)
   const [audioCurrentTime, setAudioCurrentTime] = React.useState(0)
@@ -1609,8 +1614,9 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   const hasAudio = !!video.audioBase64
   const secPerScene = video.duration === "long" ? 18 : 12
 
-  // ── Load images ────────────────────────────────────────────────────────────
+  // ── Load images (only for Pexels fallback — skip if runway video exists) ───
   React.useEffect(() => {
+    if (isRunwayVideo) { setImgsReady(true); return }
     if (images.length === 0) { setImgsReady(true); return }
     let done = 0
     const loaded: (HTMLImageElement|null)[] = new Array(images.length).fill(null)
@@ -1656,79 +1662,106 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     scenes.flatMap((s: any) => (s.text || '').split(/\s+/).filter(Boolean)),
   [scenes])
 
-  // ── Draw subtitles: global karaoke window (12 words visible, current highlighted)
+  // ── Draw subtitles: chunk-based karaoke (6 words per block, no index bug) ──
   const drawSubtitles = (ctx: CanvasRenderingContext2D, currentWordIdx: number, W: number, H: number) => {
     if (allWords.length === 0) return
     ctx.save()
-    ctx.font = 'bold 26px Arial, sans-serif'
-    ctx.textBaseline = 'alphabetic'
 
-    // Show a window of up to 12 words, centered ~3 words before current
-    const WINDOW = 12
-    const winStart = Math.max(0, currentWordIdx - 3)
-    const winEnd = Math.min(allWords.length, winStart + WINDOW)
-    const windowWords = allWords.slice(winStart, winEnd)
-    const localIdx = currentWordIdx - winStart // index within window
+    const CHUNK = 6
+    const chunkIdx = Math.floor(currentWordIdx / CHUNK)
+    const chunkStart = chunkIdx * CHUNK
+    const chunkEnd = Math.min(chunkStart + CHUNK, allWords.length)
+    const chunkWords = allWords.slice(chunkStart, chunkEnd)
+    const localIdx = currentWordIdx - chunkStart
 
-    const maxLineW = W - 100
-    type LineData = { words: string[], startIdx: number }
+    const fontSize = Math.max(20, Math.round(W / 38))
+    ctx.font = `700 ${fontSize}px Arial, sans-serif`
+    ctx.textBaseline = 'middle'
+
+    // Word wrap into max 2 lines
+    const maxLineW = W * 0.84
+    type LineData = { words: string[]; startLocal: number }
     const lines: LineData[] = []
-    let line: string[] = [], lineW = 0, lineStartIdx = 0
+    let line: string[] = [], lineW = 0, lineStart = 0
 
-    windowWords.forEach((word: string, i: number) => {
+    chunkWords.forEach((word: string, i: number) => {
       const ww = ctx.measureText(word + ' ').width
       if (lineW + ww > maxLineW && line.length > 0) {
-        lines.push({ words: [...line], startIdx: lineStartIdx })
-        lineStartIdx = i; line = [word]; lineW = ww
+        lines.push({ words: [...line], startLocal: lineStart })
+        lineStart = i; line = [word]; lineW = ww
       } else {
-        if (line.length === 0) lineStartIdx = i
+        if (line.length === 0) lineStart = i
         line.push(word); lineW += ww
       }
     })
-    if (line.length > 0) lines.push({ words: line, startIdx: lineStartIdx })
+    if (line.length > 0) lines.push({ words: line, startLocal: lineStart })
 
-    const lineH = 38
+    const lineH = fontSize * 1.75
     const totalH = lines.length * lineH + 20
-    const baseY = H - 16
+    const bottomMargin = H * 0.075
+    const bgY = H - bottomMargin - totalH
+    const bgX = W * 0.04, bgW = W * 0.92, r = 12
 
-    // Background pill
-    ctx.fillStyle = 'rgba(0,0,0,0.68)'
+    // Pill background
+    ctx.fillStyle = 'rgba(0,0,0,0.72)'
     ctx.beginPath()
-    const bgX = 24, bgY = baseY - totalH - 2, bgW = W - 48, bgHH = totalH + 4, r = 10
-    ctx.moveTo(bgX + r, bgY); ctx.lineTo(bgX + bgW - r, bgY)
-    ctx.arcTo(bgX + bgW, bgY, bgX + bgW, bgY + r, r)
-    ctx.lineTo(bgX + bgW, bgY + bgHH - r)
-    ctx.arcTo(bgX + bgW, bgY + bgHH, bgX + bgW - r, bgY + bgHH, r)
-    ctx.lineTo(bgX + r, bgY + bgHH)
-    ctx.arcTo(bgX, bgY + bgHH, bgX, bgY + bgHH - r, r)
-    ctx.lineTo(bgX, bgY + r)
-    ctx.arcTo(bgX, bgY, bgX + r, bgY, r)
+    ctx.moveTo(bgX + r, bgY - 6)
+    ctx.lineTo(bgX + bgW - r, bgY - 6)
+    ctx.arcTo(bgX + bgW, bgY - 6, bgX + bgW, bgY - 6 + r, r)
+    ctx.lineTo(bgX + bgW, bgY + totalH - 6 - r)
+    ctx.arcTo(bgX + bgW, bgY + totalH - 6, bgX + bgW - r, bgY + totalH - 6, r)
+    ctx.lineTo(bgX + r, bgY + totalH - 6)
+    ctx.arcTo(bgX, bgY + totalH - 6, bgX, bgY + totalH - 6 - r, r)
+    ctx.lineTo(bgX, bgY - 6 + r)
+    ctx.arcTo(bgX, bgY - 6, bgX + r, bgY - 6, r)
     ctx.closePath(); ctx.fill()
 
-    let gi = 0
+    // Draw words — use sequential index (wi) to avoid indexOf duplicate-word bug
     lines.forEach((ln, li) => {
+      ctx.font = `700 ${fontSize}px Arial, sans-serif`
       const lineWidth = ln.words.reduce((acc: number, w: string) => acc + ctx.measureText(w + ' ').width, 0)
-      const y = baseY - (lines.length - 1 - li) * lineH - 6
+      const y = bgY + li * lineH + lineH * 0.5 + 2
       let x = (W - lineWidth) / 2
-      ln.words.forEach((word: string) => {
-        const wIdx = ln.startIdx + gi - (gi - ln.words.indexOf(word))
-        const absIdx = ln.startIdx + ln.words.indexOf(word)
-        const isCurrent = absIdx === localIdx
-        const isSpoken = absIdx < localIdx
+
+      for (let wi = 0; wi < ln.words.length; wi++) {
+        const wordLocalIdx = ln.startLocal + wi
+        const isCurrent = wordLocalIdx === localIdx
+        const isSpoken = wordLocalIdx < localIdx
+        const word = ln.words[wi]
+
+        ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'
+
         if (isCurrent) {
-          ctx.shadowColor = 'rgba(255,229,92,0.7)'; ctx.shadowBlur = 16; ctx.fillStyle = '#FFE55C'
+          ctx.shadowColor = 'rgba(255,212,0,0.65)'; ctx.shadowBlur = 14
+          ctx.fillStyle = '#FFD700'
+          ctx.font = `900 ${Math.round(fontSize * 1.06)}px Arial, sans-serif`
         } else if (isSpoken) {
-          ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 6; ctx.fillStyle = '#FFFFFF'
+          ctx.fillStyle = '#FFFFFF'
+          ctx.font = `700 ${fontSize}px Arial, sans-serif`
         } else {
-          ctx.shadowColor = 'none'; ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,0.35)'
+          ctx.fillStyle = 'rgba(255,255,255,0.32)'
+          ctx.font = `500 ${fontSize}px Arial, sans-serif`
         }
+
         ctx.fillText(word, x, y)
+        ctx.font = `700 ${fontSize}px Arial, sans-serif`
         x += ctx.measureText(word + ' ').width
-        gi++
-      })
+      }
     })
+
     ctx.restore()
   }
+
+  // ── Draw subtitles on an overlay canvas (used for Runway video) ────────────
+  const drawSubtitleOverlay = React.useCallback((currentWordIdx: number) => {
+    const canvas = subCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const W = canvas.width, H = canvas.height
+    ctx.clearRect(0, 0, W, H)
+    drawSubtitles(ctx, currentWordIdx, W, H)
+  }, [allWords])
 
   // ── Draw canvas frame ──────────────────────────────────────────────────────
   const isPortrait = video.format === 'portrait'
@@ -1739,9 +1772,9 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     const img = imgs[sceneIdx] || imgs[0] || null
 
     if (img) {
-      const scale = 1 + pct * 0.035
+      const scale = 1 + pct * 0.03
       ctx.save()
-      ctx.filter = 'brightness(0.4) saturate(0.65)'
+      ctx.filter = 'brightness(0.62) saturate(0.82) contrast(1.08)'
       ctx.drawImage(img, (W - W*scale)/2, (H - H*scale)/2, W*scale, H*scale)
       ctx.restore()
     } else {
@@ -1750,9 +1783,9 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     }
 
-    // Vignette overlay
-    const ov = ctx.createLinearGradient(0, H*0.28, 0, H)
-    ov.addColorStop(0, 'rgba(0,0,0,0)'); ov.addColorStop(0.6, 'rgba(0,0,0,0.55)'); ov.addColorStop(1, 'rgba(0,0,0,0.96)')
+    // Vignette overlay — lighter at top, heavy at bottom for subtitle readability
+    const ov = ctx.createLinearGradient(0, H*0.3, 0, H)
+    ov.addColorStop(0, 'rgba(0,0,0,0)'); ov.addColorStop(0.55, 'rgba(0,0,0,0.45)'); ov.addColorStop(1, 'rgba(0,0,0,0.88)')
     ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H)
 
     // ── Global word tracking for subtitles ──────────────────────────────────
@@ -1790,9 +1823,9 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   }, [])
 
   const startPlay = React.useCallback(() => {
-    if (!canvasRef.current || !imgsReady) return
-    const ctx = canvasRef.current.getContext('2d')!
+    if (!imgsReady) return
     const audio = audioRef.current
+    const rwVideo = runwayVideoRef.current
     isPlayingRef.current = true
     setIsPlaying(true)
 
@@ -1801,7 +1834,41 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
       audio.play().catch(() => {})
     }
 
-    // Timer fallback for no-audio / no timing computed yet
+    // For runway video: play the video and run subtitle overlay RAF
+    if (isRunwayVideo && rwVideo) {
+      rwVideo.currentTime = 0
+      rwVideo.play().catch(() => {})
+      const loop = () => {
+        if (!isPlayingRef.current) return
+        const t = audio ? audio.currentTime : (rwVideo.currentTime)
+        setAudioCurrentTime(t)
+        // Subtitle overlay
+        const totalDurSub = audioDuration > 0 ? audioDuration : rwVideo.duration || 60
+        const wordIdx = allWords.length > 0 && totalDurSub > 0
+          ? Math.min(Math.floor((t / totalDurSub) * allWords.length), allWords.length - 1)
+          : 0
+        const sub = subCanvasRef.current
+        if (sub) {
+          const ctx = sub.getContext('2d')
+          if (ctx) { ctx.clearRect(0, 0, sub.width, sub.height); drawSubtitles(ctx, wordIdx, sub.width, sub.height) }
+        }
+        if (rwVideo.ended || (audio && (audio.ended || t >= (audioDuration || 9999)))) {
+          isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
+          rwVideo.pause(); rwVideo.currentTime = 0
+          if (audio) { audio.pause(); audio.currentTime = 0 }
+          const sub = subCanvasRef.current
+          if (sub) sub.getContext('2d')?.clearRect(0, 0, sub.width, sub.height)
+          return
+        }
+        animRef.current = requestAnimationFrame(loop)
+      }
+      animRef.current = requestAnimationFrame(loop)
+      return
+    }
+
+    // Canvas player (Pexels fallback)
+    if (!canvasRef.current) return
+    const ctx = canvasRef.current.getContext('2d')!
     let timerStart = performance.now()
 
     const loop = () => {
@@ -1809,11 +1876,8 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
       let sceneIdx: number, pct: number, t = 0
 
       if (audio && hasAudio && sceneTimingRef.current.length > 0) {
-        // ── Audio-driven (primary mode) ──
         t = audio.currentTime
         setAudioCurrentTime(t)
-
-        // Find which scene we're in
         sceneIdx = 0
         for (let i = sceneTimingRef.current.length - 1; i >= 0; i--) {
           if (t >= sceneTimingRef.current[i].start) { sceneIdx = i; break }
@@ -1821,20 +1885,17 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
         const timing = sceneTimingRef.current[sceneIdx]
         const sceneDur = timing.end - timing.start
         pct = sceneDur > 0 ? Math.min((t - timing.start) / sceneDur, 1) : 0
-
         if (audio.ended || t >= (audioDuration || N * secPerScene)) {
           drawFrame(ctx, N - 1, 1, audioDuration || N * secPerScene)
           isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
           return
         }
       } else {
-        // ── Timer-driven fallback ──
         const elapsed = (performance.now() - timerStart) / 1000
         setAudioCurrentTime(elapsed)
         t = elapsed
         sceneIdx = Math.min(Math.floor(elapsed / secPerScene), N - 1)
         pct = Math.min((elapsed % secPerScene) / secPerScene, 1)
-
         if (elapsed >= N * secPerScene) {
           drawFrame(ctx, N - 1, 1, N * secPerScene)
           isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
@@ -1849,24 +1910,30 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     }
 
     animRef.current = requestAnimationFrame(loop)
-  }, [imgsReady, hasAudio, drawFrame, N, secPerScene, audioDuration, cancelLoop])
+  }, [imgsReady, hasAudio, isRunwayVideo, drawFrame, allWords, N, secPerScene, audioDuration, cancelLoop])
 
   const stopPlay = React.useCallback(() => {
     isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
     cancelLoop()
     const audio = audioRef.current
     if (audio) { audio.pause(); audio.currentTime = 0 }
-    const canvas = canvasRef.current
-    if (canvas && imgsReady) drawFrame(canvas.getContext('2d')!, 0, 0)
-  }, [imgsReady, drawFrame, cancelLoop])
+    const rwVideo = runwayVideoRef.current
+    if (rwVideo) { rwVideo.pause(); rwVideo.currentTime = 0 }
+    const sub = subCanvasRef.current
+    if (sub) sub.getContext('2d')?.clearRect(0, 0, sub.width, sub.height)
+    if (!isRunwayVideo) {
+      const canvas = canvasRef.current
+      if (canvas && imgsReady) drawFrame(canvas.getContext('2d')!, 0, 0)
+    }
+  }, [imgsReady, isRunwayVideo, drawFrame, cancelLoop])
 
   const seekTo = React.useCallback((pct: number) => {
     const audio = audioRef.current
+    const rwVideo = runwayVideoRef.current
     const dur = audioDuration || N * secPerScene
-    if (audio && hasAudio) {
-      audio.currentTime = pct * dur
-    }
-    if (!isPlayingRef.current && canvasRef.current && imgsReady) {
+    if (audio && hasAudio) audio.currentTime = pct * dur
+    if (isRunwayVideo && rwVideo) rwVideo.currentTime = pct * (rwVideo.duration || dur)
+    if (!isPlayingRef.current && canvasRef.current && imgsReady && !isRunwayVideo) {
       const t = pct * dur
       let sceneIdx = 0
       if (sceneTimingRef.current.length > 0) {
@@ -1878,11 +1945,11 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
         drawFrame(canvasRef.current.getContext('2d')!, sceneIdx, scenePct, t)
       }
     }
-  }, [audioDuration, N, secPerScene, hasAudio, imgsReady, drawFrame])
+  }, [audioDuration, N, secPerScene, hasAudio, isRunwayVideo, imgsReady, drawFrame])
 
   React.useEffect(() => {
-    if (imgsReady && canvasRef.current) drawFrame(canvasRef.current.getContext('2d')!, 0, 0)
-  }, [imgsReady, drawFrame])
+    if (imgsReady && canvasRef.current && !isRunwayVideo) drawFrame(canvasRef.current.getContext('2d')!, 0, 0)
+  }, [imgsReady, drawFrame, isRunwayVideo])
 
   React.useEffect(() => () => { isPlayingRef.current = false; cancelLoop() }, [cancelLoop])
 
@@ -1983,9 +2050,41 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
         <div style={{flex:1,overflow:"auto"}}>
 
           {tab==="player"&&<div>
-            {/* Canvas */}
+            {/* Player area — Runway video OR canvas fallback */}
             <div style={{position:"relative",background:"#000",lineHeight:0}}>
-              <canvas ref={canvasRef} width={isPortrait?720:1280} height={isPortrait?1280:720} style={{width:"100%",display:"block",aspectRatio:isPortrait?"9/16":"16/9",maxHeight:isPortrait?"600px":"420px"}}/>
+
+              {/* ── Runway ML video player ── */}
+              {isRunwayVideo && (
+                <>
+                  <video
+                    ref={runwayVideoRef}
+                    src={video.runwayVideoUrl}
+                    playsInline
+                    muted
+                    style={{width:"100%",display:"block",aspectRatio:isPortrait?"9/16":"16/9",maxHeight:isPortrait?"600px":"420px",objectFit:"cover"}}
+                    onEnded={()=>{isPlayingRef.current=false;setIsPlaying(false);setCurrentScene(0);setAudioCurrentTime(0);cancelLoop()}}
+                  />
+                  {/* Subtitle overlay canvas */}
+                  <canvas
+                    ref={subCanvasRef}
+                    width={isPortrait?720:1280}
+                    height={isPortrait?1280:720}
+                    style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}
+                  />
+                  {/* Runway badge */}
+                  <div style={{position:"absolute",top:"10px",left:"10px",background:"rgba(0,0,0,0.72)",border:"1px solid rgba(197,24,58,.4)",borderRadius:"6px",padding:"4px 10px",display:"flex",alignItems:"center",gap:"6px"}}>
+                    <div style={{width:"6px",height:"6px",borderRadius:"50%",background:M.red,boxShadow:`0 0 6px ${M.red}`}}/>
+                    <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",color:"#fff",fontWeight:600,letterSpacing:"0.08em"}}>RUNWAY ML GEN4.5</span>
+                  </div>
+                </>
+              )}
+
+              {/* ── Pexels canvas player ── */}
+              {!isRunwayVideo && (
+                <canvas ref={canvasRef} width={isPortrait?720:1280} height={isPortrait?1280:720} style={{width:"100%",display:"block",aspectRatio:isPortrait?"9/16":"16/9",maxHeight:isPortrait?"600px":"420px"}}/>
+              )}
+
+              {/* Play button overlay */}
               {!isPlaying&&imgsReady&&audioReady&&(
                 <div onClick={startPlay} style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
                   <div style={{width:"68px",height:"68px",background:"rgba(197,24,58,.92)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"26px",color:"#fff",boxShadow:"0 8px 40px rgba(197,24,58,.5)",backdropFilter:"blur(4px)",transition:"transform .15s"}}
@@ -1993,11 +2092,13 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                     onMouseLeave={e=>(e.currentTarget as HTMLElement).style.transform="scale(1)"}>▶</div>
                 </div>
               )}
+
+              {/* Loading state */}
               {(!imgsReady||!audioReady)&&(
                 <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.7)"}}>
                   <div style={{textAlign:"center",color:M.t3,fontSize:"12px",fontFamily:"'JetBrains Mono',monospace"}}>
                     <div style={{width:"20px",height:"20px",border:`2px solid ${M.lineHi}`,borderTopColor:M.red,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 10px"}}/>
-                    {!imgsReady ? "Carregando cenas..." : "Carregando áudio..."}
+                    {!imgsReady ? "Carregando..." : "Carregando áudio..."}
                   </div>
                 </div>
               )}
@@ -2007,7 +2108,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
             {video.audioBase64&&(
               <audio ref={audioRef} src={video.audioBase64} style={{display:"none"}}
                 onLoadedMetadata={onAudioLoaded}
-                onEnded={()=>{isPlayingRef.current=false;setIsPlaying(false);setCurrentScene(0);setAudioCurrentTime(0);cancelLoop()}}/>
+                onEnded={()=>{if(!isRunwayVideo){isPlayingRef.current=false;setIsPlaying(false);setCurrentScene(0);setAudioCurrentTime(0);cancelLoop()}}}/>
             )}
 
             {/* Controls */}
@@ -2034,7 +2135,15 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                   </button>
                   :<button onClick={stopPlay} style={{background:M.raised,color:M.t1,border:`1px solid ${M.line}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>■ Parar</button>
                 )}
-                {images.length>0&&(
+                {/* Runway MP4 direct download */}
+                {isRunwayVideo&&(
+                  <a href={video.runwayVideoUrl} download target="_blank" rel="noopener noreferrer"
+                    style={{background:"rgba(197,24,58,.12)",color:M.red,border:`1px solid rgba(197,24,58,.3)`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s",textDecoration:"none",display:"inline-block"}}>
+                    ↓ Baixar MP4
+                  </a>
+                )}
+                {/* Canvas webm download (Pexels fallback) */}
+                {!isRunwayVideo&&images.length>0&&(
                   <button onClick={downloadVideo} disabled={downloading}
                     style={{background:downloading?"transparent":"rgba(124,58,237,.12)",color:downloading?M.t3:"#A78BFA",border:`1px solid ${downloading?M.line:"rgba(124,58,237,.3)"}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:downloading?"not-allowed":"pointer",opacity:downloading?.6:1,fontFamily:"'Inter',sans-serif",transition:"all .15s"}}>
                     {downloading?"Gerando...":"↓ Baixar .webm"}

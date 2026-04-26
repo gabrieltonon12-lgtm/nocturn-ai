@@ -57,6 +57,23 @@ const CONTENT_TONE: Record<string,string> = {
   asmr:          'narrador suave e sussurrado, tom relaxante',
 }
 
+// Estilo visual cinematográfico por tipo de conteúdo para Runway ML
+const RUNWAY_VISUAL: Record<string,string> = {
+  faceless:      'dark cinematic documentary b-roll, dramatic moody shadows, film noir aesthetic, atmospheric fog, no faces, slow dolly shot',
+  educational:   'clean educational documentary cinematography, informative visual metaphors, bright professional lighting, smooth tracking shot',
+  inspirational: 'uplifting golden hour cinematography, sunrise over mountains, epic wide landscape, warm lens flare, motivational mood',
+  religious:     'divine golden light rays streaming through cathedral stained glass, ethereal celestial atmosphere, sacred peaceful mood',
+  mystery:       'mysterious dark noir, dense fog at night, single street lamp, silhouette investigation, cinematic thriller atmosphere',
+  truecrime:     'dark urban crime scene aesthetic, dramatic noir shadows, yellow police tape, rainy night street, investigative documentary',
+  finance:       'premium financial district at night, sleek glass skyscraper, stock market data reflections, corporate power aesthetic',
+  nature:        'breathtaking aerial nature landscape, golden hour light over mountains, slow epic drone shot, David Attenborough style',
+  sports:        'dynamic sports stadium atmosphere, crowd energy, cinematic slow motion action, triumphant championship mood',
+  food:          'cinematic food close-up, warm amber tones, steam rising, macro culinary detail, Michelin star restaurant aesthetic',
+  horror:        'horror psychological thriller, extreme darkness, flickering light, eerie fog in abandoned place, terror atmosphere',
+  news:          'professional broadcast journalism aesthetic, urban environment, documentary vérité style, neutral informative mood',
+  asmr:          'soft dreamy macro nature details, gentle morning dew, calm peaceful forest, ultra smooth slow motion, pastel tones',
+}
+
 // Busca imagens no Pexels para cada cena
 async function fetchPexelsImages(queries: string[], pexelsKey: string, format: string = 'landscape'): Promise<string[]> {
   const orientation = format === 'portrait' ? 'portrait' : 'landscape'
@@ -276,8 +293,9 @@ RETORNE APENAS JSON válido, sem markdown:
     // ── STEP 3: Runway ML gera vídeo real em MP4 ──────────────────────────
     let runwayError = ''
     try {
-      const visualQueries = scenes.slice(0, 3).map(s => s.imageQuery).join(', ')
-      const runwayPrompt = `Cinematic b-roll video about: ${prompt}. Visual style: ${visualQueries}. High quality, dramatic lighting, smooth camera movement.`
+      const visualStyle = RUNWAY_VISUAL[contentType] || 'cinematic documentary b-roll, dramatic lighting, smooth camera movement'
+      const topQuery = scenes[0]?.imageQuery || prompt
+      const runwayPrompt = `${visualStyle}. ${topQuery}. Ultra high quality 8K, professional cinematography, no text overlay, no faces shown, no subtitles.`.substring(0, 1000)
       const tempUrl = await generateRunwayVideo(runwayPrompt, format)
       const videoId = generateId()
       runwayVideoUrl = await persistVideo(tempUrl, videoId)
