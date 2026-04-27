@@ -23,28 +23,28 @@ const QUICK_PROMPTS = [
 
 const PLAN_CREDITS: Record<string,number> = { starter:20, pro:100, enterprise:99999 }
 
-// ── Design tokens — Linear.app style (light, purple accent) ───────────────
+// ── Design tokens — Dark Cinematic Studio ─────────────────────────────────
 const C = {
-  void:    '#FFFFFF',
-  base:    '#FAFAFA',
-  layer:   '#F4F4F5',
-  card:    '#FFFFFF',
-  raised:  '#F4F4F5',
-  focus:   '#EEE9FE',
-  line:    '#E4E4E7',
-  lineHi:  '#D4D4D8',
-  red:     '#6E56CF',
-  redDim:  'rgba(110,86,207,.08)',
-  redGlow: 'rgba(110,86,207,.12)',
-  violet:  '#4C3899',
-  vDim:    'rgba(110,86,207,.06)',
-  green:   '#16A34A',
-  gDim:    'rgba(22,163,74,.08)',
-  amber:   '#CA8A04',
-  aDim:    'rgba(202,138,4,.08)',
-  t1:      '#09090B',
-  t2:      '#52525B',
-  t3:      '#A1A1AA',
+  void:    '#0C0F1A',
+  base:    '#090C14',
+  layer:   '#0F1320',
+  card:    '#141828',
+  raised:  '#1B2035',
+  focus:   'rgba(122,92,252,.14)',
+  line:    'rgba(255,255,255,.07)',
+  lineHi:  'rgba(255,255,255,.13)',
+  red:     '#7A5CFC',
+  redDim:  'rgba(122,92,252,.12)',
+  redGlow: 'rgba(122,92,252,.22)',
+  violet:  '#A78BFA',
+  vDim:    'rgba(167,139,250,.12)',
+  green:   '#34D399',
+  gDim:    'rgba(52,211,153,.10)',
+  amber:   '#FBBF24',
+  aDim:    'rgba(251,191,36,.10)',
+  t1:      '#ECEEF8',
+  t2:      '#7A8099',
+  t3:      '#363D55',
 }
 const F = {
   body: "'Figtree',system-ui,sans-serif",
@@ -52,19 +52,19 @@ const F = {
   mono: "'JetBrains Mono',monospace",
 }
 const shadow = {
-  card:  '0 1px 2px rgba(0,0,0,.05)',
-  float: '0 2px 8px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04)',
-  modal: '0 8px 24px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.04)',
-  red:   '0 4px 14px rgba(110,86,207,.3)',
+  card:  '0 1px 3px rgba(0,0,0,.4)',
+  float: '0 4px 20px rgba(0,0,0,.5),0 1px 4px rgba(0,0,0,.3)',
+  modal: '0 16px 60px rgba(0,0,0,.7),0 4px 16px rgba(0,0,0,.4)',
+  red:   '0 4px 20px rgba(122,92,252,.35)',
 }
 // ──────────────────────────────────────────────────────────────────────────
 
 const selStyle: React.CSSProperties = {
-  background: '#FFFFFF',
-  border: '1px solid #E4E4E7',
+  background: '#1B2035',
+  border: '1px solid rgba(255,255,255,.07)',
   borderRadius: '8px',
   padding: '9px 12px',
-  color: '#09090B',
+  color: '#ECEEF8',
   fontSize: '14px',
   outline: 'none',
   fontFamily: "'Figtree',system-ui,sans-serif",
@@ -447,20 +447,20 @@ export default function Dashboard() {
         .card-hover { transition: border-color .18s, box-shadow .18s, transform .18s !important; }
         .card-hover:hover { border-color: ${C.lineHi} !important; box-shadow: ${shadow.float} !important; transform: translateY(-1px) !important; }
         .btn-primary { transition: background .15s, box-shadow .15s, transform .15s !important; }
-        .btn-primary:hover:not(:disabled) { background: #5746AF !important; box-shadow: ${shadow.red} !important; transform: translateY(-1px) !important; }
+        .btn-primary:hover:not(:disabled) { background: #6748EE !important; box-shadow: ${shadow.red} !important; transform: translateY(-1px) !important; }
         .btn-primary:active:not(:disabled) { transform: scale(.98) !important; }
         .btn-ghost { transition: border-color .15s, color .15s, background .15s !important; }
         .btn-ghost:hover { border-color: ${C.lineHi} !important; color: ${C.t1} !important; background: ${C.layer} !important; }
         .chip { transition: border-color .15s, background .15s, color .15s !important; }
-        .chip:hover { border-color: rgba(110,86,207,.3) !important; }
+        .chip:hover { border-color: rgba(122,92,252,.4) !important; background: rgba(122,92,252,.06) !important; }
         .quick-prompt { transition: border-color .15s, background .15s, transform .15s !important; }
         .quick-prompt:hover { border-color: ${C.lineHi} !important; background: ${C.layer} !important; transform: translateY(-1px) !important; }
-        .sel-row select:focus { border-color: ${C.red} !important; box-shadow: 0 0 0 3px rgba(110,86,207,.12) !important; }
-        .textarea-prompt:focus { border-color: ${C.red} !important; box-shadow: 0 0 0 3px rgba(110,86,207,.12) !important; }
+        .sel-row select:focus { border-color: ${C.red} !important; box-shadow: 0 0 0 3px rgba(122,92,252,.18) !important; }
+        .textarea-prompt:focus { border-color: ${C.red} !important; box-shadow: 0 0 0 3px rgba(122,92,252,.18) !important; }
         .sidebar-footer-btn { transition: background .12s !important; }
         .sidebar-footer-btn:hover { background: ${C.layer} !important; }
         .view-enter { animation: fadeUp .2s ease both; }
-        .gen-card { background: linear-gradient(135deg,rgba(110,86,207,.04),rgba(76,56,153,.03)); background-size:300% 300%; animation:gradientShift 8s ease infinite; }
+        .gen-card { background: linear-gradient(135deg,rgba(122,92,252,.06),rgba(90,60,250,.03)); background-size:300% 300%; animation:gradientShift 8s ease infinite; }
         @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
         @keyframes spin { to{transform:rotate(360deg)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -515,7 +515,7 @@ export default function Dashboard() {
 
         {isMobile && sidebarOpen && (
           <div className="sidebar-overlay" onClick={()=>setSidebarOpen(false)}
-            style={{position:'fixed',inset:0,background:'rgba(9,9,11,.5)',zIndex:40,backdropFilter:'blur(4px)',animation:'fadeIn .2s ease'}}/>
+            style={{position:'fixed',inset:0,background:'rgba(4,6,12,.7)',zIndex:40,backdropFilter:'blur(6px)',animation:'fadeIn .2s ease'}}/>
         )}
 
         {/* ── SIDEBAR ─────────────────────────────────────────── */}
@@ -1346,7 +1346,7 @@ export default function Dashboard() {
                       </div>
                     ))}
                     {pwMsg && (
-                      <div style={{padding:'10px 14px',borderRadius:'8px',fontSize:'13px',fontWeight:500,background:pwOk?C.gDim:'#FEE2E2',border:`1px solid ${pwOk?'rgba(22,163,74,.25)':'rgba(220,38,38,.25)'}`,color:pwOk?C.green:'#DC2626'}}>
+                      <div style={{padding:'10px 14px',borderRadius:'8px',fontSize:'13px',fontWeight:500,background:pwOk?C.gDim:'rgba(248,113,113,.12)',border:`1px solid ${pwOk?'rgba(52,211,153,.25)':'rgba(248,113,113,.3)'}`,color:pwOk?C.green:'#F87171'}}>
                         {pwMsg}
                       </div>
                     )}
@@ -1428,9 +1428,9 @@ function PostGenUpsellModal({user, onClose, onUpgrade, C, F, shadow}: any) {
 
 // ── VIDEO GRID ───────────────────────────────────────────────────────────────
 const VC = {
-  bg: '#FFFFFF', raised: '#F4F4F5', line: '#E4E4E7', lineHi: '#D4D4D8',
-  red: '#6E56CF', t1: '#09090B', t2: '#52525B', t3: '#A1A1AA',
-  green: '#16A34A', violet: '#4C3899',
+  bg: '#141828', raised: '#1B2035', line: 'rgba(255,255,255,.07)', lineHi: 'rgba(255,255,255,.13)',
+  red: '#7A5CFC', t1: '#ECEEF8', t2: '#7A8099', t3: '#363D55',
+  green: '#34D399', violet: '#A78BFA',
 }
 function VideoGrid({videos, onSelect}: {videos:any[], onSelect:(v:any)=>void}) {
   return (
@@ -1441,10 +1441,10 @@ function VideoGrid({videos, onSelect}: {videos:any[], onSelect:(v:any)=>void}) {
           style={{background:VC.bg,border:`1px solid ${VC.line}`,borderRadius:'12px',overflow:'hidden',cursor:'pointer',transition:'border-color .18s,box-shadow .18s,transform .18s',boxShadow:'0 1px 2px rgba(0,0,0,.05)'}}>
 
           {/* Thumbnail */}
-          <div style={{height:'130px',background:`linear-gradient(135deg,${VC.raised},#EBEBEC)`,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden'}}>
+          <div style={{height:'130px',background:`linear-gradient(135deg,${VC.raised},#0F1320)`,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden'}}>
             {v.images&&v.images[0]
               ?<img src={v.images[0]} alt="" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:0.85}}/>
-              :<div style={{position:'absolute',inset:0,background:`radial-gradient(circle at 50% 35%,rgba(110,86,207,.08),transparent 70%)`}}/>
+              :<div style={{position:'absolute',inset:0,background:`radial-gradient(circle at 50% 35%,rgba(122,92,252,.12),transparent 70%)`}}/>
             }
             <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(9,9,11,.25),transparent 55%)'}}/>
             <div style={{position:'relative',zIndex:1,width:'44px',height:'44px',background:VC.red,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'17px',boxShadow:'0 4px 16px rgba(110,86,207,.4)',backdropFilter:'blur(4px)'}}>▶</div>
@@ -1553,7 +1553,7 @@ function UpgradeModal({user, onClose, onUpgrade, C, F, shadow}: any) {
 function ConfettiEffect() {
   const pieces = React.useMemo(() => Array.from({length:30},(_,i)=>({
     id:i, x:Math.random()*100, delay:Math.random()*2, dur:2+Math.random()*2,
-    color:['#6E56CF','#4C3899','#16A34A','#CA8A04','#E879F9','#60A5FA'][Math.floor(Math.random()*6)],
+    color:['#7A5CFC','#A78BFA','#34D399','#FBBF24','#E879F9','#60A5FA'][Math.floor(Math.random()*6)],
     size:6+Math.random()*8,
   })), [])
   return (
