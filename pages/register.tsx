@@ -5,6 +5,24 @@ import { useRouter } from 'next/router'
 
 declare global { interface Window { fbq: any; ttq: any } }
 
+const D = {
+  bg:      '#090C14',
+  card:    '#141828',
+  raised:  '#1B2035',
+  line:    'rgba(255,255,255,.07)',
+  lineHi:  'rgba(255,255,255,.13)',
+  acc:     '#7A5CFC',
+  accHov:  '#6748EE',
+  accDim:  'rgba(122,92,252,.12)',
+  accGlow: 'rgba(122,92,252,.30)',
+  green:   '#34D399',
+  gDim:    'rgba(52,211,153,.10)',
+  amber:   '#FBBF24',
+  t1:      '#ECEEF8',
+  t2:      '#7A8099',
+  t3:      '#363D55',
+}
+
 export default function Register() {
   const router = useRouter()
   const { plan, ref } = router.query
@@ -62,224 +80,222 @@ export default function Register() {
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    background: '#FFFFFF',
-    border: '1px solid #E4E4E7',
-    borderRadius: '8px',
-    padding: '10px 14px',
-    color: '#09090B',
-    fontSize: '15px',
-    outline: 'none',
-    width: '100%',
-    fontFamily: "'Inter',system-ui,sans-serif",
-    transition: 'border-color .15s, box-shadow .15s',
-    fontWeight: 400,
-  }
+  const steps = ['Criar conta', 'Dashboard', 'Gerar vídeo']
 
   return (
     <>
       <Head><title>Criar Conta — NOCTURN.AI</title></Head>
 
+      <style>{`
+        @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes float1 { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-24px) scale(1.04)} }
+        @keyframes float2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(18px)} }
+        @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.4} }
+        .inp {
+          background:${D.raised};border:1px solid ${D.line};border-radius:10px;
+          padding:12px 16px;color:${D.t1};font-size:15px;outline:none;
+          width:100%;box-sizing:border-box;transition:border-color .18s,box-shadow .18s;
+          font-family:'Figtree',system-ui,sans-serif;
+        }
+        .inp::placeholder{color:${D.t3};}
+        .inp:focus{border-color:${D.acc}!important;box-shadow:0 0 0 3px rgba(122,92,252,.18)!important;}
+        .btn-acc{
+          background:${D.acc};color:#fff;border:none;border-radius:10px;
+          padding:14px;font-size:15px;font-weight:700;cursor:pointer;width:100%;
+          font-family:'Syne',system-ui,sans-serif;letter-spacing:-.02em;
+          transition:background .15s,box-shadow .15s,transform .15s;
+          box-shadow:0 4px 20px rgba(122,92,252,.35);
+        }
+        .btn-acc:hover:not(:disabled){background:${D.accHov};box-shadow:0 6px 28px rgba(122,92,252,.50);transform:translateY(-1px);}
+        .btn-acc:active:not(:disabled){transform:scale(.98);}
+        .btn-acc:disabled{opacity:.55;cursor:not-allowed;}
+        .link-acc{color:${D.acc};font-weight:600;transition:color .15s;}
+        .link-acc:hover{color:#A78BFA;}
+        @media(max-width:767px){.right-col{display:none!important}}
+      `}</style>
+
       <div style={{
-        minHeight: '100vh',
-        background: '#FAFAFA',
-        display: 'flex',
-        fontFamily: "'Inter',system-ui,sans-serif",
+        minHeight:'100vh',display:'flex',background:D.bg,
+        fontFamily:"'Figtree',system-ui,sans-serif",
       }}>
-        {/* Left — form */}
+
+        {/* ── LEFT: Form ── */}
         <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '40px 24px',
-          maxWidth: '520px',
-          margin: '0 auto',
+          flex:1,display:'flex',flexDirection:'column',alignItems:'center',
+          justifyContent:'center',padding:'48px 32px',
+          maxWidth:'520px',margin:'0 auto',
+          animation:'fadeUp .4s ease both',
         }}>
+
           {/* Logo */}
-          <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'36px',alignSelf:'flex-start'}}>
-            <div style={{width:'32px',height:'32px',background:'linear-gradient(135deg,#6E56CF,#4C3899)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Space Grotesk',sans-serif",fontWeight:800,color:'#fff',fontSize:'14px',boxShadow:'0 2px 8px rgba(110,86,207,.3)'}}>N</div>
-            <span style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:'17px',fontWeight:700,color:'#09090B',letterSpacing:'-0.03em'}}>NOCTURN.AI</span>
+          <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'40px',alignSelf:'flex-start'}}>
+            <div style={{
+              width:'38px',height:'38px',
+              background:'linear-gradient(135deg,#7A5CFC,#5B21B6)',
+              borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'center',
+              fontFamily:"'Syne',sans-serif",fontWeight:800,color:'#fff',fontSize:'17px',
+              boxShadow:'0 4px 18px rgba(122,92,252,.45)',letterSpacing:'-0.5px',flexShrink:0,
+            }}>N</div>
+            <span style={{fontFamily:"'Syne',sans-serif",fontSize:'18px',fontWeight:700,color:D.t1,letterSpacing:'-0.04em'}}>NOCTURN.AI</span>
           </div>
 
-          {/* Stepper */}
-          <div style={{display:'flex',alignItems:'center',width:'100%',marginBottom:'28px'}}>
-            {['Criar conta','Dashboard','Gerar vídeo'].map((step,i)=>(
-              <div key={i} style={{display:'flex',alignItems:'center',flex:i<2?1:'auto'}}>
-                <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',minWidth:'80px'}}>
+          {/* Progress stepper */}
+          <div style={{display:'flex',alignItems:'center',width:'100%',marginBottom:'32px'}}>
+            {steps.map((step,i) => (
+              <div key={i} style={{display:'flex',alignItems:'center',flex:i<steps.length-1?1:'auto'}}>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'5px',minWidth:'80px'}}>
                   <div style={{
-                    width:'26px',height:'26px',borderRadius:'50%',
+                    width:'28px',height:'28px',borderRadius:'50%',
                     display:'flex',alignItems:'center',justifyContent:'center',
-                    fontSize:'11px',fontWeight:600,flexShrink:0,
-                    background: i===0 ? '#6E56CF' : '#F4F4F5',
-                    border: i===0 ? 'none' : '1px solid #E4E4E7',
-                    color: i===0 ? '#fff' : '#A1A1AA',
+                    fontSize:'11px',fontWeight:700,flexShrink:0,
+                    background: i===0 ? D.acc : D.raised,
+                    border: i===0 ? 'none' : `1px solid ${D.line}`,
+                    color: i===0 ? '#fff' : D.t3,
+                    boxShadow: i===0 ? '0 0 12px rgba(122,92,252,.4)' : 'none',
                   }}>{i+1}</div>
-                  <span style={{fontSize:'10px',color:i===0?'#6E56CF':'#A1A1AA',whiteSpace:'nowrap',fontWeight:i===0?500:400}}>{step}</span>
+                  <span style={{fontSize:'10px',color:i===0?D.acc:D.t3,whiteSpace:'nowrap',fontWeight:i===0?600:400,fontFamily:"'JetBrains Mono',monospace",letterSpacing:'0.03em'}}>{step}</span>
                 </div>
-                {i<2 && <div style={{flex:1,height:'1px',background:'#E4E4E7',margin:'0 8px',marginBottom:'16px'}}/>}
+                {i<steps.length-1 && <div style={{flex:1,height:'1px',background:D.line,margin:'0 8px',marginBottom:'16px'}}/>}
               </div>
             ))}
           </div>
 
           {/* Heading */}
           <div style={{alignSelf:'flex-start',marginBottom:'28px'}}>
-            <h1 style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:'26px',fontWeight:600,letterSpacing:'-0.03em',color:'#09090B',marginBottom:'8px',lineHeight:1.2}}>
+            <h1 style={{fontFamily:"'Syne',sans-serif",fontSize:'28px',fontWeight:800,letterSpacing:'-0.045em',color:D.t1,marginBottom:'10px',lineHeight:1.1}}>
               Crie sua conta grátis
             </h1>
-            <p style={{fontSize:'14px',color:'#52525B',lineHeight:1.6,fontWeight:400}}>
+            <p style={{fontSize:'14px',color:D.t2,lineHeight:1.65,fontWeight:400}}>
               Em 2 minutos você gera seu primeiro vídeo faceless.{' '}
-              <span style={{color:'#09090B',fontWeight:500}}>Sem câmera. Sem aparecer.</span>
+              <span style={{color:D.t1,fontWeight:600}}>Sem câmera. Sem aparecer.</span>
             </p>
           </div>
 
+          {/* Plan badge */}
           {plan && planNames[plan as string] && (
-            <div style={{width:'100%',background:'#DCFCE7',border:'1px solid rgba(22,163,74,.25)',color:'#16A34A',padding:'10px 16px',borderRadius:'8px',fontSize:'13px',marginBottom:'20px',fontWeight:500,fontFamily:"'JetBrains Mono',monospace"}}>
+            <div style={{
+              width:'100%',background:D.gDim,border:'1px solid rgba(52,211,153,.25)',
+              color:D.green,padding:'10px 16px',borderRadius:'10px',fontSize:'13px',
+              marginBottom:'20px',fontWeight:600,fontFamily:"'JetBrains Mono',monospace",
+              letterSpacing:'0.03em',
+            }}>
               ✓ Plano selecionado: {planNames[plan as string]}
             </div>
           )}
 
+          {/* Error */}
           {error && (
-            <div style={{width:'100%',background:'#FEE2E2',border:'1px solid rgba(220,38,38,.25)',color:'#DC2626',padding:'12px 16px',borderRadius:'8px',fontSize:'14px',marginBottom:'20px',fontWeight:500}}>
+            <div style={{width:'100%',background:'rgba(248,113,113,.1)',border:'1px solid rgba(248,113,113,.3)',color:'#F87171',padding:'12px 16px',borderRadius:'10px',fontSize:'14px',marginBottom:'20px',fontWeight:500}}>
               {error}
             </div>
           )}
 
+          {/* Form */}
           <form onSubmit={handleSubmit} style={{display:'flex',flexDirection:'column',gap:'16px',width:'100%'}}>
             {[
-              {label:'Nome completo',type:'text',value:name,set:setName,placeholder:'Seu nome'},
-              {label:'Email',type:'email',value:email,set:setEmail,placeholder:'seu@email.com'},
-              {label:'Senha',type:'password',value:password,set:setPassword,placeholder:'Mínimo 6 caracteres'},
-            ].map(f=>(
-              <div key={f.label} style={{display:'flex',flexDirection:'column',gap:'6px'}}>
-                <label style={{fontSize:'13px',fontWeight:500,color:'#09090B'}}>{f.label}</label>
+              {label:'Nome completo', type:'text',     value:name,     set:setName,     placeholder:'Seu nome'},
+              {label:'Email',         type:'email',    value:email,    set:setEmail,    placeholder:'seu@email.com'},
+              {label:'Senha',         type:'password', value:password, set:setPassword, placeholder:'Mínimo 6 caracteres'},
+            ].map(f => (
+              <div key={f.label} style={{display:'flex',flexDirection:'column',gap:'7px'}}>
+                <label style={{fontSize:'11px',fontWeight:600,color:D.t3,letterSpacing:'0.08em',textTransform:'uppercase',fontFamily:"'JetBrains Mono',monospace"}}>{f.label}</label>
                 <input
-                  style={inputStyle}
+                  className="inp"
                   type={f.type}
                   value={f.value}
-                  onChange={e => f.set(e.target.value)}
+                  onChange={e=>f.set(e.target.value)}
                   required
                   placeholder={f.placeholder}
                   minLength={f.type==='password' ? 6 : undefined}
-                  onFocus={e => { e.target.style.borderColor='#6E56CF'; e.target.style.boxShadow='0 0 0 3px rgba(110,86,207,.12)' }}
-                  onBlur={e => { e.target.style.borderColor='#E4E4E7'; e.target.style.boxShadow='none' }}
                 />
               </div>
             ))}
 
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                background: loading ? '#EBEBEC' : '#6E56CF',
-                color: loading ? '#A1A1AA' : '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '13px',
-                fontSize: '15px',
-                fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                marginTop: '4px',
-                fontFamily: "'Space Grotesk',system-ui,sans-serif",
-                letterSpacing: '-0.01em',
-                transition: 'background .15s, box-shadow .15s, transform .15s',
-                boxShadow: loading ? 'none' : '0 4px 14px rgba(110,86,207,.3)',
-              }}
-              onMouseEnter={e => { if (!loading) { (e.currentTarget as HTMLElement).style.background='#5746AF'; (e.currentTarget as HTMLElement).style.transform='translateY(-1px)' } }}
-              onMouseLeave={e => { if (!loading) { (e.currentTarget as HTMLElement).style.background='#6E56CF'; (e.currentTarget as HTMLElement).style.transform='translateY(0)' } }}
-            >
+            <button type="submit" disabled={loading} className="btn-acc" style={{marginTop:'6px'}}>
               {loading ? 'Criando conta...' : 'Criar conta e começar →'}
             </button>
           </form>
 
           {/* Trust badges */}
-          <div style={{width:'100%',background:'#F4F4F5',border:'1px solid #E4E4E7',borderRadius:'8px',padding:'10px 16px',marginTop:'16px',textAlign:'center',fontFamily:"'JetBrains Mono',monospace",fontSize:'10px',color:'#52525B',letterSpacing:'0.03em'}}>
+          <div style={{
+            width:'100%',background:D.raised,border:`1px solid ${D.line}`,
+            borderRadius:'10px',padding:'11px 16px',marginTop:'16px',
+            textAlign:'center',fontFamily:"'JetBrains Mono',monospace",
+            fontSize:'10px',color:D.t3,letterSpacing:'0.04em',
+          }}>
             ✓ Sem cartão &nbsp;·&nbsp; ✓ Cancele quando quiser &nbsp;·&nbsp; ✓ Garantia 7 dias
           </div>
 
-          {/* Divider */}
-          <div style={{display:'flex',alignItems:'center',gap:'12px',width:'100%',marginTop:'4px'}}>
-            <div style={{flex:1,height:'1px',background:'#E4E4E7'}}/>
-            <span style={{fontSize:'12px',color:'#A1A1AA',fontWeight:500}}>ou continue com</span>
-            <div style={{flex:1,height:'1px',background:'#E4E4E7'}}/>
-          </div>
-
-          {/* Google OAuth */}
-          <a
-            href="/api/auth/google"
-            style={{
-              display:'flex', alignItems:'center', justifyContent:'center', gap:'10px',
-              width:'100%', padding:'11px', borderRadius:'8px', marginTop:'12px',
-              background:'#FFFFFF', border:'1px solid #E4E4E7', cursor:'pointer',
-              fontSize:'14px', fontWeight:500, color:'#09090B', textDecoration:'none',
-              transition:'border-color .15s, box-shadow .15s',
-              boxShadow:'0 1px 2px rgba(0,0,0,.05)',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='#6E56CF'; (e.currentTarget as HTMLElement).style.boxShadow='0 0 0 3px rgba(110,86,207,.08)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor='#E4E4E7'; (e.currentTarget as HTMLElement).style.boxShadow='0 1px 2px rgba(0,0,0,.05)' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-              <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-              <path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-              <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
-            </svg>
-            Cadastrar com Google
-          </a>
-
-          <p style={{textAlign:'center',fontSize:'14px',color:'#52525B',marginTop:'16px',fontWeight:400}}>
+          <p style={{textAlign:'center',fontSize:'14px',color:D.t2,marginTop:'20px'}}>
             Já tem conta?{' '}
-            <Link href="/login" style={{color:'#6E56CF',fontWeight:600}}>Entrar</Link>
+            <Link href="/login" className="link-acc">Entrar</Link>
           </p>
+
         </div>
 
-        {/* Right panel */}
-        <div style={{
-          flex: 1,
-          background: 'linear-gradient(135deg,#6E56CF 0%,#4C3899 60%,#3730A3 100%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '60px 48px',
-          position: 'relative',
-          overflow: 'hidden',
-        }} className="hide-sm">
-          <div style={{position:'absolute',top:'-80px',right:'-80px',width:'400px',height:'400px',borderRadius:'50%',background:'rgba(255,255,255,.06)',pointerEvents:'none'}}/>
-          <div style={{position:'absolute',bottom:'-60px',left:'-60px',width:'300px',height:'300px',borderRadius:'50%',background:'rgba(255,255,255,.04)',pointerEvents:'none'}}/>
+        {/* ── RIGHT: Cinematic panel ── */}
+        <div className="right-col" style={{
+          flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+          padding:'60px 48px',position:'relative',overflow:'hidden',
+          background:'linear-gradient(145deg,#0D0A20 0%,#090E1A 45%,#07090F 100%)',
+        }}>
+          {/* Ambient orbs */}
+          <div style={{position:'absolute',top:'10%',left:'15%',width:'460px',height:'460px',borderRadius:'50%',background:'radial-gradient(circle,rgba(122,92,252,.17) 0%,transparent 68%)',animation:'float1 9s ease-in-out infinite',pointerEvents:'none'}}/>
+          <div style={{position:'absolute',bottom:'10%',right:'5%',width:'380px',height:'380px',borderRadius:'50%',background:'radial-gradient(circle,rgba(90,55,210,.11) 0%,transparent 65%)',animation:'float2 11s ease-in-out infinite',pointerEvents:'none'}}/>
+          {/* Dot grid */}
+          <div style={{position:'absolute',inset:0,backgroundImage:'radial-gradient(rgba(255,255,255,.055) 1px,transparent 1px)',backgroundSize:'28px 28px',pointerEvents:'none'}}/>
+          {/* Vignette */}
+          <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at center,transparent 35%,rgba(4,6,12,.65) 100%)',pointerEvents:'none'}}/>
 
-          <div style={{position:'relative',zIndex:1,textAlign:'center',maxWidth:'360px'}}>
-            <div style={{fontSize:'52px',marginBottom:'24px',lineHeight:1}}>🚀</div>
-            <h2 style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:'26px',fontWeight:700,color:'#FFFFFF',letterSpacing:'-0.03em',marginBottom:'16px',lineHeight:1.2}}>
-              Você está a 3 minutos do seu primeiro vídeo viral
+          <div style={{position:'relative',zIndex:1,textAlign:'center',maxWidth:'380px'}}>
+            {/* Badge */}
+            <div style={{display:'inline-flex',alignItems:'center',gap:'8px',background:'rgba(122,92,252,.14)',border:'1px solid rgba(122,92,252,.28)',borderRadius:'20px',padding:'6px 16px',marginBottom:'28px'}}>
+              <span style={{width:'6px',height:'6px',borderRadius:'50%',background:'#7A5CFC',boxShadow:'0 0 8px rgba(122,92,252,.8)',display:'inline-block',animation:'pulse 2s ease infinite'}}/>
+              <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'10px',color:'#A78BFA',fontWeight:600,letterSpacing:'0.09em'}}>3 minutos para o primeiro vídeo</span>
+            </div>
+
+            <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:'32px',fontWeight:800,color:'#ECEEF8',letterSpacing:'-0.045em',marginBottom:'16px',lineHeight:1.1}}>
+              Você está a 3 min<br/>do seu primeiro vídeo viral
             </h2>
-            <p style={{fontSize:'14px',color:'rgba(255,255,255,.75)',lineHeight:1.7,marginBottom:'32px'}}>
-              Nossa IA escreve o roteiro, narra com voz realista e monta o vídeo completo. Só você precisa escolher o tema.
+            <p style={{fontSize:'15px',color:'rgba(236,238,248,.55)',lineHeight:1.8,marginBottom:'38px'}}>
+              Nossa IA escreve o roteiro, narra com voz realista e monta o vídeo completo. Você só escolhe o tema.
             </p>
 
-            <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+            {/* Steps */}
+            <div style={{display:'flex',flexDirection:'column',gap:'12px',textAlign:'left'}}>
               {[
-                { n:'1', t:'Escolha um tema', s:'True crime, mistério, finanças ou religioso' },
-                { n:'2', t:'A IA gera tudo', s:'Roteiro GPT-4o + Voz IA + Vídeo Runway' },
-                { n:'3', t:'Publique e monetize', s:'YouTube, TikTok, Instagram e Shorts' },
-              ].map(s=>(
-                <div key={s.n} style={{display:'flex',alignItems:'flex-start',gap:'14px',background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'10px',padding:'14px 16px',textAlign:'left'}}>
-                  <div style={{width:'24px',height:'24px',borderRadius:'50%',background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#fff',flexShrink:0,fontFamily:"'Space Grotesk',sans-serif"}}>{s.n}</div>
+                {n:'01', t:'Escolha um tema',    s:'True crime, mistério, finanças ou religioso'},
+                {n:'02', t:'A IA gera tudo',     s:'Roteiro GPT-4o + Voz IA + Vídeo Runway ML'},
+                {n:'03', t:'Publique e monetize',s:'YouTube, TikTok, Instagram e Shorts'},
+              ].map((s,i) => (
+                <div key={i} style={{display:'flex',alignItems:'flex-start',gap:'16px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'12px',padding:'16px 18px',backdropFilter:'blur(4px)'}}>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'10px',fontWeight:600,color:'rgba(122,92,252,.6)',flexShrink:0,letterSpacing:'0.04em',marginTop:'2px'}}>{s.n}</span>
                   <div>
-                    <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:'13px',fontWeight:600,color:'#fff',marginBottom:'2px'}}>{s.t}</div>
-                    <div style={{fontSize:'12px',color:'rgba(255,255,255,.65)',lineHeight:1.5}}>{s.s}</div>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontSize:'14px',fontWeight:700,color:'#ECEEF8',marginBottom:'3px'}}>{s.t}</div>
+                    <div style={{fontSize:'12px',color:'rgba(236,238,248,.45)',lineHeight:1.55}}>{s.s}</div>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Stats */}
+            <div style={{display:'flex',gap:'12px',marginTop:'28px',justifyContent:'center'}}>
+              {[
+                {v:'12k+',  l:'Inscritos gerados'},
+                {v:'3 min', l:'Por vídeo'},
+                {v:'R$0',   l:'Para começar'},
+              ].map((s,i) => (
+                <div key={i} style={{flex:1,background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'10px',padding:'12px 8px',textAlign:'center'}}>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:'18px',fontWeight:800,color:'#ECEEF8',letterSpacing:'-0.04em',lineHeight:1}}>{s.v}</div>
+                  <div style={{fontSize:'10px',color:'rgba(236,238,248,.4)',marginTop:'4px',lineHeight:1.4,fontFamily:"'JetBrains Mono',monospace"}}>{s.l}</div>
+                </div>
+              ))}
+            </div>
+
           </div>
         </div>
-      </div>
 
-      <style>{`
-        @media(max-width:767px) { .hide-sm { display:none !important; } }
-      `}</style>
+      </div>
     </>
   )
 }
