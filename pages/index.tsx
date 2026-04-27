@@ -157,7 +157,7 @@ function HeroMockup() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
           <div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: isDone ? '#10B981' : '#0F172A', fontFamily: "'Space Grotesk',sans-serif", letterSpacing: '-0.02em', transition: 'color 0.3s' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: isDone ? '#10B981' : '#0F172A', fontFamily: "'Syne',sans-serif", letterSpacing: '-0.02em', transition: 'color 0.3s' }}>
               {cur.label}
             </div>
             <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#94A3B8', marginTop: '3px' }}>
@@ -203,7 +203,7 @@ function LiveNotification() {
   }, [])
   if (!visible) return null
   return (
-    <div style={{ position: 'fixed', bottom: '80px', left: '20px', zIndex: 999, background: 'rgba(255,255,255,0.98)', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '12px 16px', display: 'flex', gap: '10px', alignItems: 'center', boxShadow: '0 12px 40px rgba(0,0,0,.12)', animation: 'fadeUp .3s ease', maxWidth: '300px', fontFamily: "'Inter',sans-serif", backdropFilter: 'blur(16px)' }}>
+    <div style={{ position: 'fixed', bottom: '80px', left: '20px', zIndex: 999, background: 'rgba(255,255,255,0.98)', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '12px 16px', display: 'flex', gap: '10px', alignItems: 'center', boxShadow: '0 12px 40px rgba(0,0,0,.12)', animation: 'fadeUp .3s ease', maxWidth: '300px', fontFamily: "'Figtree',sans-serif", backdropFilter: 'blur(16px)' }}>
       <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg,#C5183A,#7C3AED)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>🎬</div>
       <div>
         <div style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A', lineHeight: 1.35 }}>{ev.name} <span style={{ color: '#64748B', fontWeight: 400 }}>· {ev.city}</span></div>
@@ -226,8 +226,8 @@ function StickyCtaBar() {
   return (
     <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 998, background: 'rgba(255,255,255,.97)', backdropFilter: 'blur(20px)', borderTop: '1px solid #192436', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
       <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#64748B' }}>1 vídeo grátis · sem cartão · cancele quando quiser</span>
-      <Link href="/register" style={{ background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '10px 32px', borderRadius: '9px', fontWeight: 700, fontSize: '14px', fontFamily: "'Space Grotesk',sans-serif", letterSpacing: '-0.01em', boxShadow: '0 4px 20px rgba(197,24,58,.4)' }}>
-        Começar grátis agora →
+      <Link href="/register" className="cta-btn" style={{ background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '10px 32px', borderRadius: '9px', fontWeight: 700, fontSize: '14px', fontFamily: "'Syne',sans-serif", letterSpacing: '-0.01em', boxShadow: '0 4px 20px rgba(197,24,58,.4)' }}>
+        Criar Meu Vídeo — Grátis →
       </Link>
     </div>
   )
@@ -242,7 +242,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '15px', fontWeight: 600, color: '#0F172A', lineHeight: 1.4 }}>{q}</div>
         <div style={{ color: open ? '#C5183A' : '#94A3B8', fontSize: '20px', flexShrink: 0, transition: 'color .2s, transform .2s', transform: open ? 'rotate(45deg)' : 'none' }}>+</div>
       </div>
-      {open && <div style={{ fontSize: '14px', color: '#64748B', lineHeight: 1.8, marginTop: '14px', fontFamily: "'Inter',sans-serif" }}>{a}</div>}
+      {open && <div style={{ fontSize: '14px', color: '#64748B', lineHeight: 1.8, marginTop: '14px', fontFamily: "'Figtree',sans-serif" }}>{a}</div>}
     </div>
   )
 }
@@ -284,10 +284,10 @@ function ExitIntentPopup() {
         {!sent ? (
           <div style={{ display:'flex',flexDirection:'column',gap:'10px' }}>
             <Link href="/register" onClick={() => setShow(false)}
-              style={{ display:'block',background:'linear-gradient(135deg,#C5183A,#8B0A22)',color:'#fff',padding:'14px 28px',borderRadius:'11px',fontWeight:700,fontSize:'16px',fontFamily:"'Space Grotesk',sans-serif",letterSpacing:'-0.02em',boxShadow:'0 6px 30px rgba(197,24,58,.4)',textDecoration:'none' }}>
+              style={{ display:'block',background:'linear-gradient(135deg,#C5183A,#8B0A22)',color:'#fff',padding:'14px 28px',borderRadius:'11px',fontWeight:700,fontSize:'16px',fontFamily:"'Syne',sans-serif",letterSpacing:'-0.02em',boxShadow:'0 6px 30px rgba(197,24,58,.4)',textDecoration:'none' }}>
               Quero meus 3 vídeos grátis →
             </Link>
-            <button onClick={() => setShow(false)} style={{ background:'none',border:'none',fontSize:'12px',color:'#94A3B8',cursor:'pointer',padding:'4px',fontFamily:"'Inter',sans-serif" }}>
+            <button onClick={() => setShow(false)} style={{ background:'none',border:'none',fontSize:'12px',color:'#94A3B8',cursor:'pointer',padding:'4px',fontFamily:"'Figtree',sans-serif" }}>
               Não, prefiro pagar R$400 por vídeo
             </button>
           </div>
@@ -357,7 +357,7 @@ export default function Home() {
       <StickyCtaBar />
       <ExitIntentPopup />
 
-      <div style={{ background: '#F8FAFC', color: '#0F172A', fontFamily: "'Inter',system-ui,sans-serif", minHeight: '100vh', overflowX: 'hidden' }}>
+      <div style={{ background: '#F8FAFC', color: '#0F172A', fontFamily: "'Figtree',system-ui,sans-serif", minHeight: '100vh', overflowX: 'hidden' }}>
 
         {/* AMBIENT BG */}
         <div aria-hidden style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
@@ -380,13 +380,13 @@ export default function Home() {
         <nav style={{ position: 'sticky', top: '38px', zIndex: 100, background: 'rgba(255,255,255,.96)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
           <div style={{ maxWidth: '1120px', margin: '0 auto', padding: '0 24px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '30px', height: '30px', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, color: '#fff', fontSize: '14px', boxShadow: '0 2px 12px rgba(197,24,58,.4)', letterSpacing: '-0.5px' }}>N</div>
+              <div style={{ width: '30px', height: '30px', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Syne',sans-serif", fontWeight: 800, color: '#fff', fontSize: '14px', boxShadow: '0 2px 12px rgba(197,24,58,.4)', letterSpacing: '-0.5px' }}>N</div>
               <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '16px', fontWeight: 800, letterSpacing: '-0.04em', color: '#0F172A' }}>NOCTURN.AI</span>
             </div>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <Link href="#planos" className="ghost-btn" style={{ color: '#64748B', fontSize: '13px', fontWeight: 500, padding: '7px 14px', borderRadius: '8px', border: '1px solid #192436', transition: 'all .2s' }}>Planos</Link>
               <Link href="/login" className="ghost-btn" style={{ color: '#64748B', fontSize: '13px', fontWeight: 500, padding: '7px 14px', borderRadius: '8px', border: '1px solid #192436', transition: 'all .2s' }}>Entrar</Link>
-              <Link href="/register" className="cta-btn" style={{ background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', fontSize: '13px', fontWeight: 700, padding: '8px 20px', borderRadius: '8px', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 4px 18px rgba(197,24,58,.32)', whiteSpace: 'nowrap' }}>
+              <Link href="/register" className="cta-btn" style={{ background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', fontSize: '13px', fontWeight: 700, padding: '8px 20px', borderRadius: '8px', fontFamily: "'Syne',sans-serif", boxShadow: '0 4px 18px rgba(197,24,58,.32)', whiteSpace: 'nowrap' }}>
                 Criar conta grátis →
               </Link>
             </div>
@@ -418,8 +418,8 @@ export default function Home() {
               </p>
 
               <div className="hero-cta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px' }}>
-                <Link href="/register" className="cta-btn" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '16px 44px', borderRadius: '12px', fontWeight: 700, fontSize: '17px', letterSpacing: '-0.02em', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 8px 44px rgba(197,24,58,.42)' }}>
-                  Gerar meu 1º vídeo grátis →
+                <Link href="/register" className="cta-btn" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '16px 44px', borderRadius: '12px', fontWeight: 700, fontSize: '17px', letterSpacing: '-0.02em', fontFamily: "'Syne',sans-serif", boxShadow: '0 8px 44px rgba(197,24,58,.42)' }}>
+                  Criar Meu Primeiro Vídeo — Grátis →
                 </Link>
                 <div style={{ display: 'flex', gap: '18px', alignItems: 'center', flexWrap: 'wrap' }}>
                   {['Sem cartão', '1 vídeo grátis', 'Cancele quando quiser'].map((t, i) => (
@@ -432,7 +432,7 @@ export default function Home() {
 
               {/* Tech logos */}
               <div style={{ marginTop: '44px', display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', opacity: 0.45 }}>
-                {['GPT-4o', 'OpenAI TTS', 'Pexels', 'WebM', 'PT-BR'].map((t, i) => (
+                {['GPT-4o', 'OpenAI TTS', 'Runway ML', 'MP4', 'PT-BR'].map((t, i) => (
                   <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#64748B', letterSpacing: '0.1em', fontWeight: 500 }}>{t}</span>
                 ))}
               </div>
@@ -449,7 +449,7 @@ export default function Home() {
         <div style={{ position: 'relative', zIndex: 1, borderTop: '1px solid rgba(0,0,0,.05)', padding: '20px 24px', textAlign: 'center' }}>
           <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '32px', flexWrap: 'wrap' }}>
             <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#CBD5E1', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Powered by</span>
-            {['GPT-4o', 'OpenAI TTS', 'Pexels API', 'Vercel', 'Next.js'].map((t, i) => (
+            {['GPT-4o', 'OpenAI TTS', 'Runway ML', 'Vercel', 'Next.js'].map((t, i) => (
               <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#94A3B8', fontWeight: 600, letterSpacing: '0.04em', opacity: 0.7 }}>{t}</span>
             ))}
           </div>
@@ -544,7 +544,7 @@ export default function Home() {
             ))}
           </div>
           <div style={{ textAlign: 'center', marginTop: '44px' }}>
-            <Link href="/register" className="cta-btn" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '14px 40px', borderRadius: '11px', fontWeight: 700, fontSize: '15px', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 6px 28px rgba(197,24,58,.35)' }}>
+            <Link href="/register" className="cta-btn" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '14px 40px', borderRadius: '11px', fontWeight: 700, fontSize: '15px', fontFamily: "'Syne',sans-serif", boxShadow: '0 6px 28px rgba(197,24,58,.35)' }}>
               Testar agora — é de graça →
             </Link>
           </div>
@@ -561,10 +561,78 @@ export default function Home() {
             ].map((s, i) => (
               <div key={i} style={{ background: 'rgba(255,255,255,0.97)', padding: '32px 16px', textAlign: 'center', borderRight: i < 3 ? '1px solid #192436' : 'none' }}>
                 <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(22px,3vw,40px)', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.045em', lineHeight: 1, marginBottom: '6px' }}>{s.value}</div>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#C5183A', marginBottom: '4px', fontFamily: "'Space Grotesk',sans-serif" }}>{s.label}</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#C5183A', marginBottom: '4px', fontFamily: "'Syne',sans-serif" }}>{s.label}</div>
                 <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8' }}>{s.sub}</div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ── PERSONAS / NICHOS ── */}
+        <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '1060px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+            <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 600 }}>Para quem é</div>
+            <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(28px,4vw,52px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: '#0F172A' }}>
+              Qualquer nicho.<br /><span style={{ color: '#C5183A' }}>Resultados em dias.</span>
+            </h2>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: '14px' }}>
+            {[
+              {
+                icon: '💀', nicho: 'True Crime', color: '#C5183A',
+                title: 'Canal true crime sem aparecer',
+                desc: 'Roteiros investigativos baseados em casos reais brasileiros. Narração grave, imagens cinematográficas, subtítulos automáticos.',
+                metric: '12k inscritos em 6 semanas',
+              },
+              {
+                icon: '✝️', nicho: 'Religioso', color: '#7C3AED',
+                title: 'Canal de fé e espiritualidade',
+                desc: 'Mensagens de esperança, reflexões bíblicas e histórias de fé. Tom reverente, voz acolhedora, visual de luz divina.',
+                metric: '47 vídeos no 1º mês',
+              },
+              {
+                icon: '💰', nicho: 'Dark Finance', color: '#059669',
+                title: 'Canal de educação financeira',
+                desc: 'Estratégias que os ricos não querem que você saiba. Tom direto, visual premium de arranha-céus, scripts persuasivos.',
+                metric: 'R$4.200/mês no 3º mês',
+              },
+              {
+                icon: '🕵️', nicho: 'Mistério & Conspiração', color: '#D97706',
+                title: 'Canal de mistérios e revelações',
+                desc: 'Segredos, ovnis, conspirações e verdades ocultas. Tom suspense, visual noir, roteiro que prende do início ao fim.',
+                metric: '8 canais ativos simultâneos',
+              },
+              {
+                icon: '🌿', nicho: 'Natureza', color: '#059669',
+                title: 'Canal de natureza e universo',
+                desc: 'Os lugares mais inexplorados do planeta, fenômenos naturais e descobertas científicas. Visual épico, narração contemplativa.',
+                metric: '2.4M de views acumuladas',
+              },
+              {
+                icon: '👻', nicho: 'Terror & Horror', color: '#C5183A',
+                title: 'Canal de terror psicológico',
+                desc: 'Histórias baseadas em fatos reais, lendas urbanas e casos assustadores. Visual sombrio, narração tensa, trilha sonora dark.',
+                metric: '< 3 minutos por vídeo',
+              },
+            ].map((p, i) => (
+              <div key={i} style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid #192436', borderRadius: '18px', padding: '26px 24px', backdropFilter: 'blur(8px)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', bottom: '-16px', right: '14px', fontSize: '72px', opacity: 0.04, lineHeight: 1, pointerEvents: 'none' }}>{p.icon}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '24px', lineHeight: 1 }}>{p.icon}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: p.color, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>{p.nicho}</div>
+                </div>
+                <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '15px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', marginBottom: '10px', lineHeight: 1.3 }}>{p.title}</div>
+                <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.75, marginBottom: '16px' }}>{p.desc}</p>
+                <div style={{ background: `rgba(${p.color === '#C5183A' ? '197,24,58' : p.color === '#7C3AED' ? '124,58,237' : p.color === '#D97706' ? '217,119,6' : '5,150,105'},.08)`, border: `1px solid ${p.color}28`, borderRadius: '8px', padding: '7px 12px', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: p.color, fontWeight: 700 }}>✓ {p.metric}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '44px' }}>
+            <Link href="/register" className="cta-btn" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '14px 40px', borderRadius: '11px', fontWeight: 700, fontSize: '15px', fontFamily: "'Syne',sans-serif", boxShadow: '0 6px 28px rgba(197,24,58,.35)' }}>
+              Escolher meu nicho e começar →
+            </Link>
           </div>
         </section>
 
@@ -581,18 +649,18 @@ export default function Home() {
                 ))}
               </div>
               <div>
-                <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '14px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>+1.200 criadores</div>
+                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: '14px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>+1.200 criadores</div>
                 <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', marginTop: '2px' }}>já usam o NOCTURN.AI</div>
               </div>
             </div>
             <div style={{ width: '1px', height: '36px', background: '#E2E8F0' }} />
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '22px', fontWeight: 800, letterSpacing: '-0.04em', color: '#0F172A', lineHeight: 1 }}>2.4M+</div>
+              <div style={{ fontFamily: "'Syne',sans-serif", fontSize: '22px', fontWeight: 800, letterSpacing: '-0.04em', color: '#0F172A', lineHeight: 1 }}>2.4M+</div>
               <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', marginTop: '4px' }}>views geradas</div>
             </div>
             <div style={{ width: '1px', height: '36px', background: '#E2E8F0' }} />
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '22px', fontWeight: 800, letterSpacing: '-0.04em', color: '#0F172A', lineHeight: 1 }}>&lt; 3min</div>
+              <div style={{ fontFamily: "'Syne',sans-serif", fontSize: '22px', fontWeight: 800, letterSpacing: '-0.04em', color: '#0F172A', lineHeight: 1 }}>&lt; 3min</div>
               <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', marginTop: '4px' }}>tempo por vídeo</div>
             </div>
             <div style={{ width: '1px', height: '36px', background: '#E2E8F0' }} />
@@ -632,7 +700,7 @@ export default function Home() {
           <div style={{ textAlign: 'center', marginBottom: '52px' }}>
             <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 600 }}>Planos</div>
             <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(28px,4vw,52px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: '#0F172A', marginBottom: '12px' }}>1 crédito = 1 vídeo completo</h2>
-            <p style={{ fontSize: '14px', color: '#64748B', fontFamily: "'Inter',sans-serif" }}>Roteiro + voz + edição. Renova todo mês. Sem fidelidade.</p>
+            <p style={{ fontSize: '14px', color: '#64748B', fontFamily: "'Figtree',sans-serif" }}>Roteiro + voz + edição. Renova todo mês. Sem fidelidade.</p>
             <div style={{ marginTop: '18px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(197,24,58,.08)', border: '1px solid rgba(197,24,58,.2)', color: '#C5183A', padding: '6px 16px', borderRadius: '20px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', fontWeight: 600 }}>
               <span style={{ animation: 'pulse 1.5s infinite', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#C5183A' }} />
               Preço de lançamento · Pode subir a qualquer momento
@@ -662,7 +730,7 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <a href={plan.url} className={plan.popular ? 'cta-btn' : ''} style={{ display: 'block', textAlign: 'center', padding: '13px', borderRadius: '10px', fontWeight: 700, fontSize: '14px', fontFamily: "'Space Grotesk',sans-serif", letterSpacing: '-0.02em', background: plan.popular ? 'linear-gradient(135deg,#C5183A,#8B0A22)' : 'transparent', border: plan.popular ? 'none' : `1px solid ${plan.color}50`, color: plan.popular ? '#fff' : plan.color, boxShadow: plan.popular ? '0 4px 22px rgba(197,24,58,.32)' : 'none', marginBottom: '12px', transition: 'opacity .15s' }}>
+                <a href={plan.url} className={plan.popular ? 'cta-btn' : ''} style={{ display: 'block', textAlign: 'center', padding: '13px', borderRadius: '10px', fontWeight: 700, fontSize: '14px', fontFamily: "'Syne',sans-serif", letterSpacing: '-0.02em', background: plan.popular ? 'linear-gradient(135deg,#C5183A,#8B0A22)' : 'transparent', border: plan.popular ? 'none' : `1px solid ${plan.color}50`, color: plan.popular ? '#fff' : plan.color, boxShadow: plan.popular ? '0 4px 22px rgba(197,24,58,.32)' : 'none', marginBottom: '12px', transition: 'opacity .15s' }}>
                   Assinar {plan.name} →
                 </a>
                 <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', textAlign: 'center' }}>
@@ -709,7 +777,7 @@ export default function Home() {
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(241,245,249,0.85)', border: '1px solid #192436', borderRadius: '12px', padding: '12px 18px', backdropFilter: 'blur(8px)' }}>
                 <span style={{ fontSize: '18px', lineHeight: 1 }}>{b.icon}</span>
                 <div>
-                  <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '12px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>{b.label}</div>
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: '12px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>{b.label}</div>
                   <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#94A3B8', marginTop: '1px' }}>{b.sub}</div>
                 </div>
               </div>
@@ -740,8 +808,8 @@ export default function Home() {
               Sem câmera. Sem aparecer. Sem experiência.<br />
               <strong style={{ color: '#0F172A' }}>1 vídeo grátis para você testar agora.</strong>
             </p>
-            <Link href="/register" className="cta-btn" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '18px 56px', borderRadius: '13px', fontWeight: 700, fontSize: '18px', letterSpacing: '-0.02em', fontFamily: "'Space Grotesk',sans-serif", boxShadow: '0 8px 44px rgba(197,24,58,.48)', marginBottom: '22px', position: 'relative' }}>
-              Criar conta e gerar grátis →
+            <Link href="/register" className="cta-btn" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', color: '#fff', padding: '18px 56px', borderRadius: '13px', fontWeight: 700, fontSize: '18px', letterSpacing: '-0.02em', fontFamily: "'Syne',sans-serif", boxShadow: '0 8px 44px rgba(197,24,58,.48)', marginBottom: '22px', position: 'relative' }}>
+              Criar Meu Canal Grátis Agora →
             </Link>
             <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#94A3B8', letterSpacing: '0.03em', position: 'relative' }}>
               Sem cartão · 1 vídeo grátis · 7 dias de garantia
@@ -753,7 +821,7 @@ export default function Home() {
         <footer style={{ borderTop: '1px solid rgba(0,0,0,.06)', padding: '32px 24px', position: 'relative', zIndex: 1, marginBottom: '56px' }}>
           <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '26px', height: '26px', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, color: '#fff', fontSize: '12px' }}>N</div>
+              <div style={{ width: '26px', height: '26px', background: 'linear-gradient(135deg,#C5183A,#8B0A22)', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Syne',sans-serif", fontWeight: 800, color: '#fff', fontSize: '12px' }}>N</div>
               <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '14px', fontWeight: 800, letterSpacing: '-0.04em' }}>NOCTURN.AI</span>
             </div>
             <div style={{ display: 'flex', gap: '22px', alignItems: 'center', flexWrap: 'wrap' }}>

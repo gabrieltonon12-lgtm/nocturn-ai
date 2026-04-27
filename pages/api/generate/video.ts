@@ -283,27 +283,32 @@ RETORNE APENAS JSON válido, sem markdown:
       tags = ['misterio', 'conspiracao', 'dark channel', 'verdade', 'faceless']
     }
 
-    // ── STEP 2: OpenAI TTS gera audio da narracao ────────────────────────
-    if (openaiKey && script) {
-      const openaiVoice = OPENAI_VOICES[voice] || OPENAI_VOICES.masculine
-      audioBase64 = await generateAudio(script, openaiVoice, openaiKey)
+    // ── STEPS 2+3: Audio e Runway em paralelo (economiza ~10–30s) ────────
+    let runwayError = ''
+    const openaiVoice = OPENAI_VOICES[voice] || OPENAI_VOICES.masculine
+    const visualStyle = RUNWAY_VISUAL[contentType] || 'cinematic documentary b-roll, dramatic lighting, smooth camera movement'
+    const topQuery = scenes[0]?.imageQuery || prompt
+    const runwayPrompt = `${visualStyle}. ${topQuery}. Ultra high quality 8K, professional cinematography, no text overlay, no faces shown, no subtitles.`.substring(0, 1000)
+
+    const [audioResult, runwayResult] = await Promise.allSettled([
+      openaiKey && script ? generateAudio(script, openaiVoice, openaiKey) : Promise.resolve(''),
+      generateRunwayVideo(runwayPrompt, format),
+    ])
+
+    if (audioResult.status === 'fulfilled') {
+      audioBase64 = audioResult.value
       console.log('OpenAI TTS:', audioBase64 ? `OK (${Math.round(audioBase64.length/1024)}kb)` : 'FAILED')
+    } else {
+      console.error('OpenAI TTS error:', (audioResult as PromiseRejectedResult).reason)
     }
 
-    // ── STEP 3: Runway ML gera vídeo real em MP4 ──────────────────────────
-    let runwayError = ''
-    try {
-      const visualStyle = RUNWAY_VISUAL[contentType] || 'cinematic documentary b-roll, dramatic lighting, smooth camera movement'
-      const topQuery = scenes[0]?.imageQuery || prompt
-      const runwayPrompt = `${visualStyle}. ${topQuery}. Ultra high quality 8K, professional cinematography, no text overlay, no faces shown, no subtitles.`.substring(0, 1000)
-      const tempUrl = await generateRunwayVideo(runwayPrompt, format)
+    if (runwayResult.status === 'fulfilled') {
       const videoId = generateId()
-      runwayVideoUrl = await persistVideo(tempUrl, videoId)
+      runwayVideoUrl = await persistVideo((runwayResult as PromiseFulfilledResult<string>).value, videoId)
       console.log('Runway vídeo gerado:', runwayVideoUrl)
-    } catch (e: any) {
-      runwayError = e?.message || 'Erro desconhecido no Runway'
+    } else {
+      runwayError = (runwayResult as PromiseRejectedResult).reason?.message || 'Erro desconhecido no Runway'
       console.error('Runway error:', runwayError)
-      // Fallback: busca imagens no Pexels
       if (pexelsKey && scenes.length > 0) {
         const queries = scenes.map(s => s.imageQuery)
         images = await fetchPexelsImages(queries, pexelsKey, format)

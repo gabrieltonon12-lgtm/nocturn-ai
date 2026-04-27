@@ -47,8 +47,8 @@ const C = {
   t3:      '#A1A1AA',
 }
 const F = {
-  body: "'Inter',system-ui,sans-serif",
-  head: "'Space Grotesk',system-ui,sans-serif",
+  body: "'Figtree',system-ui,sans-serif",
+  head: "'Syne',system-ui,sans-serif",
   mono: "'JetBrains Mono',monospace",
 }
 const shadow = {
@@ -67,7 +67,7 @@ const selStyle: React.CSSProperties = {
   color: '#09090B',
   fontSize: '14px',
   outline: 'none',
-  fontFamily: "'Inter',system-ui,sans-serif",
+  fontFamily: "'Figtree',system-ui,sans-serif",
   width: '100%',
   cursor: 'pointer',
   transition: 'border-color .15s, box-shadow .15s',
@@ -196,7 +196,8 @@ export default function Dashboard() {
     const u = localStorage.getItem('user')
     const t = localStorage.getItem('token')
     if (!u || !t) { router.push('/login'); return }
-    const parsed = JSON.parse(u)
+    let parsed: any
+    try { parsed = JSON.parse(u) } catch { router.push('/login'); return }
     setUser(parsed)
     if (!localStorage.getItem('onboarding_done')) setShowOnboarding(true)
     const token = t
@@ -305,9 +306,10 @@ export default function Dashboard() {
         if (res.ok && data.video) {
           const isFirstVideo = videos.length === 0
           setVideos(v => [data.video, ...v])
-          const u = JSON.parse(localStorage.getItem('user') || '{}')
+          let u: any = {}
+          try { u = JSON.parse(localStorage.getItem('user') || '{}') } catch {}
           u.credits = data.creditsRemaining
-          localStorage.setItem('user', JSON.stringify(u))
+          try { localStorage.setItem('user', JSON.stringify(u)) } catch {}
           setUser((prev: any) => ({ ...prev, credits: data.creditsRemaining }))
           setLastGeneratedVideo(data.video)
           if (data.video.runwayError) {
@@ -362,9 +364,10 @@ export default function Dashboard() {
         setRewardToast(data.message || 'Reward resgatado!')
         setTimeout(() => setRewardToast(''), 4000)
         if (data.creditsEarned > 0) {
-          const u = JSON.parse(localStorage.getItem('user') || '{}')
+          let u: any = {}
+          try { u = JSON.parse(localStorage.getItem('user') || '{}') } catch {}
           u.credits = data.newCredits
-          localStorage.setItem('user', JSON.stringify(u))
+          try { localStorage.setItem('user', JSON.stringify(u)) } catch {}
           setUser((prev: any) => ({ ...prev, credits: data.newCredits }))
         }
         const rr = await fetch('/api/rewards', { headers: { Authorization: 'Bearer ' + token } })
@@ -1461,7 +1464,7 @@ function VideoGrid({videos, onSelect}: {videos:any[], onSelect:(v:any)=>void}) {
 
           {/* Info */}
           <div style={{padding:'11px 14px 13px'}}>
-            <div style={{fontSize:'12px',fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:VC.t1,marginBottom:'6px',fontFamily:"'Inter',sans-serif",letterSpacing:'-0.01em',lineHeight:1.3}}>{v.title||'Sem título'}</div>
+            <div style={{fontSize:'12px',fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:VC.t1,marginBottom:'6px',fontFamily:"'Figtree',sans-serif",letterSpacing:'-0.01em',lineHeight:1.3}}>{v.title||'Sem título'}</div>
             <div style={{display:'flex',justifyContent:'space-between',fontFamily:"'JetBrains Mono',monospace",fontSize:'9px',color:VC.t3}}>
               <span>{v.duration==='short'?'até 1 min':v.duration==='long'?'1–3 min':'até 1 min'}</span>
               <span style={{color:VC.red,fontWeight:600,letterSpacing:'0.02em'}}>Assistir →</span>
@@ -1577,6 +1580,11 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   const sceneTimingRef = React.useRef<Array<{start:number, end:number}>>([])
   const isPlayingRef = React.useRef(false)
   const loadedImgsRef = React.useRef<(HTMLImageElement|null)[]>([])
+  const seekFillRef = React.useRef<HTMLDivElement>(null)
+  const seekThumbRef = React.useRef<HTMLDivElement>(null)
+  const seekTimeRef = React.useRef<HTMLSpanElement>(null)
+  const audioCurrentTimeRef = React.useRef(0)
+  const currentSceneRef = React.useRef(0)
 
   const isRunwayVideo = !!video.runwayVideoUrl
 
@@ -1590,7 +1598,6 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   const [imgsReady, setImgsReady] = React.useState(isRunwayVideo ? true : false)
   const [audioReady, setAudioReady] = React.useState(!video.audioBase64)
   const [audioDuration, setAudioDuration] = React.useState(0)
-  const [audioCurrentTime, setAudioCurrentTime] = React.useState(0)
   const [copied, setCopied] = React.useState('')
 
   const M = {
@@ -1822,6 +1829,18 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     if (animRef.current) { cancelAnimationFrame(animRef.current); animRef.current = null }
   }, [])
 
+  const updateSeekDOM = React.useCallback((t: number, dur: number) => {
+    audioCurrentTimeRef.current = t
+    const pct = dur > 0 ? Math.min(t / dur, 1) : 0
+    const pctStr = `${pct * 100}%`
+    if (seekFillRef.current) seekFillRef.current.style.width = pctStr
+    if (seekThumbRef.current) seekThumbRef.current.style.left = pctStr
+    if (seekTimeRef.current) seekTimeRef.current.innerText = (() => {
+      const m = Math.floor(t / 60), sec = Math.floor(t % 60)
+      return `${m}:${sec.toString().padStart(2, '0')}`
+    })()
+  }, [])
+
   const startPlay = React.useCallback(() => {
     if (!imgsReady) return
     const audio = audioRef.current
@@ -1841,9 +1860,8 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
       const loop = () => {
         if (!isPlayingRef.current) return
         const t = audio ? audio.currentTime : (rwVideo.currentTime)
-        setAudioCurrentTime(t)
-        // Subtitle overlay
         const totalDurSub = audioDuration > 0 ? audioDuration : rwVideo.duration || 60
+        updateSeekDOM(t, totalDurSub)
         const wordIdx = allWords.length > 0 && totalDurSub > 0
           ? Math.min(Math.floor((t / totalDurSub) * allWords.length), allWords.length - 1)
           : 0
@@ -1853,7 +1871,9 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
           if (ctx) { ctx.clearRect(0, 0, sub.width, sub.height); drawSubtitles(ctx, wordIdx, sub.width, sub.height) }
         }
         if (rwVideo.ended || (audio && (audio.ended || t >= (audioDuration || 9999)))) {
-          isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
+          isPlayingRef.current = false; setIsPlaying(false)
+          currentSceneRef.current = 0; setCurrentScene(0)
+          updateSeekDOM(0, totalDurSub)
           rwVideo.pause(); rwVideo.currentTime = 0
           if (audio) { audio.pause(); audio.currentTime = 0 }
           const sub = subCanvasRef.current
@@ -1874,10 +1894,11 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
     const loop = () => {
       if (!isPlayingRef.current) return
       let sceneIdx: number, pct: number, t = 0
+      const totalDur = audioDuration || N * secPerScene
 
       if (audio && hasAudio && sceneTimingRef.current.length > 0) {
         t = audio.currentTime
-        setAudioCurrentTime(t)
+        updateSeekDOM(t, totalDur)
         sceneIdx = 0
         for (let i = sceneTimingRef.current.length - 1; i >= 0; i--) {
           if (t >= sceneTimingRef.current[i].start) { sceneIdx = i; break }
@@ -1885,35 +1906,42 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
         const timing = sceneTimingRef.current[sceneIdx]
         const sceneDur = timing.end - timing.start
         pct = sceneDur > 0 ? Math.min((t - timing.start) / sceneDur, 1) : 0
-        if (audio.ended || t >= (audioDuration || N * secPerScene)) {
-          drawFrame(ctx, N - 1, 1, audioDuration || N * secPerScene)
-          isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
+        if (audio.ended || t >= totalDur) {
+          drawFrame(ctx, N - 1, 1, totalDur)
+          isPlayingRef.current = false; setIsPlaying(false)
+          currentSceneRef.current = 0; setCurrentScene(0)
+          updateSeekDOM(0, totalDur)
           return
         }
       } else {
         const elapsed = (performance.now() - timerStart) / 1000
-        setAudioCurrentTime(elapsed)
         t = elapsed
+        updateSeekDOM(t, totalDur)
         sceneIdx = Math.min(Math.floor(elapsed / secPerScene), N - 1)
         pct = Math.min((elapsed % secPerScene) / secPerScene, 1)
-        if (elapsed >= N * secPerScene) {
-          drawFrame(ctx, N - 1, 1, N * secPerScene)
-          isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
+        if (elapsed >= totalDur) {
+          drawFrame(ctx, N - 1, 1, totalDur)
+          isPlayingRef.current = false; setIsPlaying(false)
+          currentSceneRef.current = 0; setCurrentScene(0)
+          updateSeekDOM(0, totalDur)
           if (audio) { audio.pause(); audio.currentTime = 0 }
           return
         }
       }
 
-      setCurrentScene(sceneIdx)
+      if (sceneIdx !== currentSceneRef.current) { currentSceneRef.current = sceneIdx; setCurrentScene(sceneIdx) }
       drawFrame(ctx, sceneIdx, pct, t)
       animRef.current = requestAnimationFrame(loop)
     }
 
     animRef.current = requestAnimationFrame(loop)
-  }, [imgsReady, hasAudio, isRunwayVideo, drawFrame, allWords, N, secPerScene, audioDuration, cancelLoop])
+  }, [imgsReady, hasAudio, isRunwayVideo, drawFrame, allWords, N, secPerScene, audioDuration, cancelLoop, updateSeekDOM])
 
   const stopPlay = React.useCallback(() => {
-    isPlayingRef.current = false; setIsPlaying(false); setCurrentScene(0); setAudioCurrentTime(0)
+    const dur = audioDuration || N * secPerScene
+    isPlayingRef.current = false; setIsPlaying(false)
+    currentSceneRef.current = 0; setCurrentScene(0)
+    updateSeekDOM(0, dur)
     cancelLoop()
     const audio = audioRef.current
     if (audio) { audio.pause(); audio.currentTime = 0 }
@@ -1925,16 +1953,17 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
       const canvas = canvasRef.current
       if (canvas && imgsReady) drawFrame(canvas.getContext('2d')!, 0, 0)
     }
-  }, [imgsReady, isRunwayVideo, drawFrame, cancelLoop])
+  }, [imgsReady, isRunwayVideo, drawFrame, cancelLoop, updateSeekDOM, audioDuration, N, secPerScene])
 
   const seekTo = React.useCallback((pct: number) => {
     const audio = audioRef.current
     const rwVideo = runwayVideoRef.current
     const dur = audioDuration || N * secPerScene
-    if (audio && hasAudio) audio.currentTime = pct * dur
+    const t = pct * dur
+    if (audio && hasAudio) audio.currentTime = t
     if (isRunwayVideo && rwVideo) rwVideo.currentTime = pct * (rwVideo.duration || dur)
+    updateSeekDOM(t, dur)
     if (!isPlayingRef.current && canvasRef.current && imgsReady && !isRunwayVideo) {
-      const t = pct * dur
       let sceneIdx = 0
       if (sceneTimingRef.current.length > 0) {
         for (let i = sceneTimingRef.current.length - 1; i >= 0; i--) {
@@ -1945,7 +1974,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
         drawFrame(canvasRef.current.getContext('2d')!, sceneIdx, scenePct, t)
       }
     }
-  }, [audioDuration, N, secPerScene, hasAudio, isRunwayVideo, imgsReady, drawFrame])
+  }, [audioDuration, N, secPerScene, hasAudio, isRunwayVideo, imgsReady, drawFrame, updateSeekDOM])
 
   React.useEffect(() => {
     if (imgsReady && canvasRef.current && !isRunwayVideo) drawFrame(canvasRef.current.getContext('2d')!, 0, 0)
@@ -2007,7 +2036,6 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
   }
 
   const totalDur = audioDuration || N * secPerScene
-  const seekPct = totalDur > 0 ? Math.min(audioCurrentTime / totalDur, 1) : 0
 
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"16px",backdropFilter:"blur(16px)"}}>
@@ -2016,7 +2044,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
         {/* Header */}
         <div style={{padding:"14px 18px",borderBottom:`1px solid ${M.line}`,display:"flex",alignItems:"center",gap:"12px",flexShrink:0}}>
           <div style={{flex:1,overflow:"hidden"}}>
-            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:"14px",fontWeight:700,color:M.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",letterSpacing:"-0.025em"}}>{video.title||"Vídeo"}</div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:"14px",fontWeight:700,color:M.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",letterSpacing:"-0.025em"}}>{video.title||"Vídeo"}</div>
             <div style={{display:"flex",gap:"5px",marginTop:"5px",flexWrap:"wrap"}}>
               {(video.platforms||[]).map((p:string)=>(
                 <span key={p} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",padding:"2px 7px",borderRadius:"5px",background:"rgba(255,255,255,.04)",color:M.t3,fontWeight:500,border:`1px solid ${M.line}`}}>{p}</span>
@@ -2035,7 +2063,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                 color:tab===t?'#fff':M.t3,
                 border:'none',borderRadius:"7px",padding:"5px 14px",
                 fontSize:"11px",fontWeight:tab===t?700:400,cursor:"pointer",
-                fontFamily:"'Inter',sans-serif",letterSpacing:"-0.01em",transition:"all .12s",
+                fontFamily:"'Figtree',sans-serif",letterSpacing:"-0.01em",transition:"all .12s",
               }}>
                 {t==="player"?"Player":t==="roteiro"?"Roteiro":"Tags"}
               </button>
@@ -2062,7 +2090,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                     playsInline
                     muted
                     style={{width:"100%",display:"block",aspectRatio:isPortrait?"9/16":"16/9",maxHeight:isPortrait?"600px":"420px",objectFit:"cover"}}
-                    onEnded={()=>{isPlayingRef.current=false;setIsPlaying(false);setCurrentScene(0);setAudioCurrentTime(0);cancelLoop()}}
+                    onEnded={()=>{isPlayingRef.current=false;setIsPlaying(false);currentSceneRef.current=0;setCurrentScene(0);updateSeekDOM(0,totalDur);cancelLoop()}}
                   />
                   {/* Subtitle overlay canvas */}
                   <canvas
@@ -2108,21 +2136,21 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
             {video.audioBase64&&(
               <audio ref={audioRef} src={video.audioBase64} style={{display:"none"}}
                 onLoadedMetadata={onAudioLoaded}
-                onEnded={()=>{if(!isRunwayVideo){isPlayingRef.current=false;setIsPlaying(false);setCurrentScene(0);setAudioCurrentTime(0);cancelLoop()}}}/>
+                onEnded={()=>{if(!isRunwayVideo){isPlayingRef.current=false;setIsPlaying(false);currentSceneRef.current=0;setCurrentScene(0);updateSeekDOM(0,totalDur);cancelLoop()}}}/>
             )}
 
             {/* Controls */}
             <div style={{padding:"12px 16px",borderBottom:`1px solid ${M.line}`,display:"flex",flexDirection:"column",gap:"10px"}}>
-              {/* Seekbar */}
+              {/* Seekbar — DOM refs update directly from RAF (no 60fps re-renders) */}
               <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
-                <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.t3,minWidth:"36px"}}>{fmt(audioCurrentTime)}</span>
+                <span ref={seekTimeRef} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.t3,minWidth:"36px"}}>0:00</span>
                 <div style={{flex:1,height:"4px",background:M.line,borderRadius:"2px",cursor:"pointer",position:"relative"}}
                   onClick={e=>{
                     const rect=e.currentTarget.getBoundingClientRect()
                     seekTo((e.clientX-rect.left)/rect.width)
                   }}>
-                  <div style={{position:"absolute",top:0,left:0,height:"100%",width:`${seekPct*100}%`,background:M.red,borderRadius:"2px",transition:"width .08s linear"}}/>
-                  <div style={{position:"absolute",top:"50%",left:`${seekPct*100}%`,transform:"translate(-50%,-50%)",width:"10px",height:"10px",background:M.red,borderRadius:"50%",boxShadow:`0 0 6px ${M.red}`,transition:"left .08s linear"}}/>
+                  <div ref={seekFillRef} style={{position:"absolute",top:0,left:0,height:"100%",width:"0%",background:M.red,borderRadius:"2px"}}/>
+                  <div ref={seekThumbRef} style={{position:"absolute",top:"50%",left:"0%",transform:"translate(-50%,-50%)",width:"10px",height:"10px",background:M.red,borderRadius:"50%",boxShadow:`0 0 6px ${M.red}`}}/>
                 </div>
                 <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:"10px",color:M.t3,minWidth:"36px",textAlign:"right"}}>{fmt(totalDur)}</span>
               </div>
@@ -2130,22 +2158,22 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
               {/* Buttons row */}
               <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
                 {imgsReady&&audioReady&&(!isPlaying
-                  ?<button onClick={startPlay} style={{background:`linear-gradient(135deg,${M.red},#9A1028)`,color:"#fff",border:"none",borderRadius:"9px",padding:"9px 22px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"'Space Grotesk',sans-serif",letterSpacing:"-0.02em",boxShadow:"0 4px 20px rgba(197,24,58,.25)"}}>
+                  ?<button onClick={startPlay} style={{background:`linear-gradient(135deg,${M.red},#9A1028)`,color:"#fff",border:"none",borderRadius:"9px",padding:"9px 22px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"'Syne',sans-serif",letterSpacing:"-0.02em",boxShadow:"0 4px 20px rgba(197,24,58,.25)"}}>
                     ▶ Reproduzir{video.hasAudio?" com narração":""}
                   </button>
-                  :<button onClick={stopPlay} style={{background:M.raised,color:M.t1,border:`1px solid ${M.line}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>■ Parar</button>
+                  :<button onClick={stopPlay} style={{background:M.raised,color:M.t1,border:`1px solid ${M.line}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Figtree',sans-serif"}}>■ Parar</button>
                 )}
                 {/* Runway MP4 direct download */}
                 {isRunwayVideo&&(
                   <a href={video.runwayVideoUrl} download target="_blank" rel="noopener noreferrer"
-                    style={{background:"rgba(197,24,58,.12)",color:M.red,border:`1px solid rgba(197,24,58,.3)`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s",textDecoration:"none",display:"inline-block"}}>
+                    style={{background:"rgba(197,24,58,.12)",color:M.red,border:`1px solid rgba(197,24,58,.3)`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Figtree',sans-serif",transition:"all .15s",textDecoration:"none",display:"inline-block"}}>
                     ↓ Baixar MP4
                   </a>
                 )}
                 {/* Canvas webm download (Pexels fallback) */}
                 {!isRunwayVideo&&images.length>0&&(
                   <button onClick={downloadVideo} disabled={downloading}
-                    style={{background:downloading?"transparent":"rgba(124,58,237,.12)",color:downloading?M.t3:"#A78BFA",border:`1px solid ${downloading?M.line:"rgba(124,58,237,.3)"}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:downloading?"not-allowed":"pointer",opacity:downloading?.6:1,fontFamily:"'Inter',sans-serif",transition:"all .15s"}}>
+                    style={{background:downloading?"transparent":"rgba(124,58,237,.12)",color:downloading?M.t3:"#A78BFA",border:`1px solid ${downloading?M.line:"rgba(124,58,237,.3)"}`,borderRadius:"9px",padding:"9px 20px",fontSize:"13px",fontWeight:600,cursor:downloading?"not-allowed":"pointer",opacity:downloading?.6:1,fontFamily:"'Figtree',sans-serif",transition:"all .15s"}}>
                     {downloading?"Gerando...":"↓ Baixar .webm"}
                   </button>
                 )}
@@ -2157,7 +2185,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                     a.download=(video.title||"thumbnail").replace(/[^a-zA-Z0-9]/g,"_").substring(0,40)+".jpg"
                     a.click()
                   }}
-                    style={{background:"rgba(217,119,6,.1)",color:"#D97706",border:"1px solid rgba(217,119,6,.3)",borderRadius:"9px",padding:"9px 16px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s"}}
+                    style={{background:"rgba(217,119,6,.1)",color:"#D97706",border:"1px solid rgba(217,119,6,.3)",borderRadius:"9px",padding:"9px 16px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"'Figtree',sans-serif",transition:"all .15s"}}
                     onMouseEnter={e=>{e.currentTarget.style.background="rgba(217,119,6,.18)"}}
                     onMouseLeave={e=>{e.currentTarget.style.background="rgba(217,119,6,.1)"}}>
                     ↓ Thumbnail .jpg
@@ -2168,7 +2196,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                   navigator.clipboard.writeText(url).then(()=>setCopied("share"))
                   setTimeout(()=>setCopied(""),3000)
                 }}
-                  style={{background:copied==="share"?"rgba(5,150,105,.1)":"transparent",color:copied==="share"?M.green:M.t3,border:`1px solid ${copied==="share"?"rgba(5,150,105,.3)":M.line}`,borderRadius:"9px",padding:"9px 14px",fontSize:"12px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s",whiteSpace:"nowrap"}}>
+                  style={{background:copied==="share"?"rgba(5,150,105,.1)":"transparent",color:copied==="share"?M.green:M.t3,border:`1px solid ${copied==="share"?"rgba(5,150,105,.3)":M.line}`,borderRadius:"9px",padding:"9px 14px",fontSize:"12px",fontWeight:600,cursor:"pointer",fontFamily:"'Figtree',sans-serif",transition:"all .15s",whiteSpace:"nowrap"}}>
                   {copied==="share"?"✓ Link copiado":"↗ Compartilhar"}
                 </button>
                 {isPlaying&&(
@@ -2203,8 +2231,9 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                         cancelLoop(); isPlayingRef.current=false; setIsPlaying(false); setCurrentScene(i)
                         // Seek audio to scene start
                         if (audioRef.current && sceneTimingRef.current[i]) {
-                          audioRef.current.currentTime = sceneTimingRef.current[i].start
-                          setAudioCurrentTime(sceneTimingRef.current[i].start)
+                          const seekT = sceneTimingRef.current[i].start
+                          audioRef.current.currentTime = seekT
+                          updateSeekDOM(seekT, totalDur)
                         }
                         if (canvasRef.current&&imgsReady) drawFrame(canvasRef.current.getContext("2d")!,i,0)
                       }}
@@ -2223,7 +2252,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
             {images.length===0&&(
               <div style={{padding:"36px",textAlign:"center",color:M.t3}}>
                 <div style={{fontSize:"32px",marginBottom:"12px",opacity:.2}}>🎬</div>
-                <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:"13px",fontWeight:700,color:M.t2,marginBottom:"6px",letterSpacing:"-0.02em"}}>Sem imagens neste vídeo</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:"13px",fontWeight:700,color:M.t2,marginBottom:"6px",letterSpacing:"-0.02em"}}>Sem imagens neste vídeo</div>
                 <div style={{fontSize:"12px",lineHeight:1.7,color:M.t3}}>Gere um novo vídeo para ter imagens + narração sincronizada.</div>
               </div>
             )}
@@ -2276,7 +2305,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                 </div>
               </div>
               <div style={{maxHeight:"220px",overflowY:"auto"}}>
-                <pre style={{fontFamily:"'Inter',sans-serif",fontSize:"13px",color:"#C8D6E8",lineHeight:1.9,whiteSpace:"pre-wrap",margin:0}}>{video.script||"Roteiro não disponível."}</pre>
+                <pre style={{fontFamily:"'Figtree',sans-serif",fontSize:"13px",color:"#C8D6E8",lineHeight:1.9,whiteSpace:"pre-wrap",margin:0}}>{video.script||"Roteiro não disponível."}</pre>
               </div>
             </div>
             {/* Description */}
@@ -2289,13 +2318,13 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
                     {copied==="desc"?"✓ Copiado":"Copiar"}
                   </button>
                 </div>
-                <p style={{fontFamily:"'Inter',sans-serif",fontSize:"12px",color:M.t2,lineHeight:1.75,margin:0}}>{video.description}</p>
+                <p style={{fontFamily:"'Figtree',sans-serif",fontSize:"12px",color:M.t2,lineHeight:1.75,margin:0}}>{video.description}</p>
               </div>
             )}
             {/* Download audio */}
             {video.audioBase64&&(
               <button onClick={()=>{const a=document.createElement("a");a.href=video.audioBase64;a.download=(video.title||"audio").replace(/[^a-zA-Z0-9]/g,"_").substring(0,40)+".mp3";a.click()}}
-                style={{background:"rgba(5,150,105,.08)",border:"1px solid rgba(5,150,105,.2)",color:M.green,borderRadius:"8px",padding:"9px 18px",fontSize:"12px",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:"8px",transition:"all .15s"}}
+                style={{background:"rgba(5,150,105,.08)",border:"1px solid rgba(5,150,105,.2)",color:M.green,borderRadius:"8px",padding:"9px 18px",fontSize:"12px",fontWeight:600,cursor:"pointer",fontFamily:"'Figtree',sans-serif",display:"flex",alignItems:"center",gap:"8px",transition:"all .15s"}}
                 onMouseEnter={e=>e.currentTarget.style.background="rgba(5,150,105,.15)"}
                 onMouseLeave={e=>e.currentTarget.style.background="rgba(5,150,105,.08)"}>
                 ↓ Baixar áudio (.mp3)
@@ -2315,7 +2344,7 @@ function VideoPlayerModal({video, onClose}: {video:any, onClose:()=>void}) {
             </div>
             {(video.tags||[]).length>0&&(
               <button onClick={()=>{navigator.clipboard.writeText((video.tags||[]).map((t:string)=>"#"+t).join(" "));setCopied("alltags")}}
-                style={{background:copied==="alltags"?"rgba(5,150,105,.1)":"transparent",border:`1px solid ${copied==="alltags"?"rgba(5,150,105,.3)":M.line}`,color:copied==="alltags"?M.green:M.t3,borderRadius:"8px",padding:"8px 16px",fontSize:"12px",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:500,transition:"all .15s"}}
+                style={{background:copied==="alltags"?"rgba(5,150,105,.1)":"transparent",border:`1px solid ${copied==="alltags"?"rgba(5,150,105,.3)":M.line}`,color:copied==="alltags"?M.green:M.t3,borderRadius:"8px",padding:"8px 16px",fontSize:"12px",cursor:"pointer",fontFamily:"'Figtree',sans-serif",fontWeight:500,transition:"all .15s"}}
                 onMouseEnter={e=>{e.currentTarget.style.borderColor=M.lineHi;e.currentTarget.style.color=M.t2}}
                 onMouseLeave={e=>{e.currentTarget.style.borderColor=copied==="alltags"?"rgba(5,150,105,.3)":M.line;e.currentTarget.style.color=copied==="alltags"?M.green:M.t3}}>
                 {copied==="alltags"?"✓ Copiadas!":"Copiar todas as tags"}
