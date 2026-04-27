@@ -74,10 +74,175 @@ const MARQUEE_ITEMS = [
 const GEN_STAGES = [
   { label: 'Gerando roteiro...', sub: 'GPT-4o analisando o tema', pct: 18, color: '#C5183A' },
   { label: 'Sintetizando voz...', sub: 'OpenAI TTS HD em PT-BR', pct: 42, color: '#7C3AED' },
-  { label: 'Buscando imagens...', sub: 'Pexels API · 6 cenas', pct: 71, color: '#D97706' },
-  { label: 'Montando vídeo...', sub: 'Canvas rAF loop + legendas', pct: 89, color: '#059669' },
-  { label: '✓ Pronto para publicar', sub: 'WebM · 1280×720 · 00:02:47', pct: 100, color: '#059669' },
+  { label: 'Gerando vídeo IA...', sub: 'Runway ML Gen-4.5 · MP4', pct: 78, color: '#C5183A' },
+  { label: 'Sincronizando legendas...', sub: 'Canvas rAF · karaoke sync', pct: 92, color: '#D97706' },
+  { label: '✓ Pronto para publicar', sub: 'MP4 · 1280×720 · 00:02:47', pct: 100, color: '#059669' },
 ]
+
+// ── Interactive product demo ──────────────────────────────────────────────────
+const DEMO_PROMPTS = [
+  'Os maiores segredos da Maçonaria que nunca te contaram',
+  'O caso real mais perturbador do true crime brasileiro',
+  'Como pessoas comuns ficaram ricas do zero em 2024',
+  'Os mistérios da NASA que o governo tenta esconder',
+]
+const DEMO_STEPS = [
+  { icon: '✦', label: 'GPT-4o', desc: 'Gerando roteiro cinematográfico...', done: 'Roteiro: 6 cenas · 847 palavras', color: '#C5183A' },
+  { icon: '🎙', label: 'OpenAI TTS', desc: 'Sintetizando narração em PT-BR...', done: 'Narração: voz onyx · 2min 47s', color: '#7C3AED' },
+  { icon: '🎬', label: 'Runway ML', desc: 'Gerando vídeo cinematográfico...', done: 'Vídeo: Gen-4.5 · MP4 1280×720', color: '#C5183A' },
+  { icon: '✓', label: 'Pronto!', desc: 'Exportando MP4 final...', done: 'Vídeo gerado em 2:53 ✓', color: '#059669' },
+]
+
+function ProductDemo() {
+  const [phase, setPhase] = useState<'idle'|'typing'|'generating'|'done'>('idle')
+  const [typedPrompt, setTypedPrompt] = useState('')
+  const [doneSteps, setDoneSteps] = useState<number[]>([])
+  const [activeStep, setActiveStep] = useState(-1)
+  const [promptIdx] = useState(() => Math.floor(Math.random() * DEMO_PROMPTS.length))
+  const fullPrompt = DEMO_PROMPTS[promptIdx]
+
+  useEffect(() => {
+    // Start typing after 1.5s
+    const t = setTimeout(() => setPhase('typing'), 1500)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (phase !== 'typing') return
+    let i = 0
+    const type = () => {
+      if (i <= fullPrompt.length) {
+        setTypedPrompt(fullPrompt.slice(0, i))
+        i++
+        setTimeout(type, 35 + Math.random() * 25)
+      } else {
+        setTimeout(() => setPhase('generating'), 600)
+      }
+    }
+    type()
+  }, [phase, fullPrompt])
+
+  useEffect(() => {
+    if (phase !== 'generating') return
+    let step = 0
+    setActiveStep(0)
+    const delays = [2200, 1800, 4000, 1200]
+    function next() {
+      if (step >= DEMO_STEPS.length) { setPhase('done'); setActiveStep(-1); return }
+      setActiveStep(step)
+      setTimeout(() => {
+        setDoneSteps(d => [...d, step])
+        step++
+        setTimeout(next, 200)
+      }, delays[step] || 2000)
+    }
+    next()
+  }, [phase])
+
+  // Reset loop after done
+  useEffect(() => {
+    if (phase !== 'done') return
+    const t = setTimeout(() => {
+      setPhase('idle'); setTypedPrompt(''); setDoneSteps([]); setActiveStep(-1)
+      setTimeout(() => setPhase('typing'), 800)
+    }, 4000)
+    return () => clearTimeout(t)
+  }, [phase])
+
+  return (
+    <section style={{ position: 'relative', zIndex: 1, padding: '0 24px 96px', maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+        <div style={{ display: 'inline-block', fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#C5183A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 600 }}>Demo ao vivo</div>
+        <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(26px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: '#0F172A' }}>
+          Veja acontecendo<br /><span style={{ color: '#C5183A' }}>em tempo real.</span>
+        </h2>
+      </div>
+
+      <div style={{ background: '#02040A', border: '1px solid #192436', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,.5)' }}>
+        {/* Window chrome */}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid #192436', display: 'flex', alignItems: 'center', gap: '10px', background: '#080D1A' }}>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {['#FF5F57','#FEBC2E','#28C840'].map((c, i) => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', background: c, opacity: 0.7 }} />)}
+          </div>
+          <div style={{ flex: 1, background: '#02040A', border: '1px solid #192436', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', color: '#364A62', fontFamily: "'JetBrains Mono',monospace" }}>nocturn.ai/dashboard</div>
+          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#10B981', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', display: 'inline-block', animation: 'pulse 2s infinite' }} />online
+          </div>
+        </div>
+
+        <div style={{ padding: '28px 28px 32px' }}>
+          {/* Prompt input */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '8px', color: '#364A62', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Tema do vídeo</div>
+            <div style={{ background: '#080D1A', border: `1px solid ${phase === 'idle' ? '#192436' : '#C5183A40'}`, borderRadius: '10px', padding: '14px 16px', fontFamily: "'Figtree',sans-serif", fontSize: '14px', color: '#ECF2FA', minHeight: '52px', transition: 'border-color .3s', position: 'relative' }}>
+              {typedPrompt || <span style={{ color: '#364A62' }}>Digite o tema do seu vídeo...</span>}
+              {(phase === 'typing') && <span style={{ display: 'inline-block', width: '2px', height: '16px', background: '#C5183A', marginLeft: '2px', verticalAlign: 'middle', animation: 'pulse .8s infinite' }} />}
+            </div>
+          </div>
+
+          {/* Generation steps */}
+          {(phase === 'generating' || phase === 'done') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+              {DEMO_STEPS.map((step, i) => {
+                const isDone = doneSteps.includes(i)
+                const isActive = activeStep === i && !isDone
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '10px', background: isActive ? `${step.color}10` : isDone ? 'rgba(16,185,129,.06)' : '#080D1A', border: `1px solid ${isActive ? step.color + '40' : isDone ? 'rgba(16,185,129,.2)' : '#192436'}`, transition: 'all .4s' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: isActive ? step.color : isDone ? '#10B981' : '#0C1222', border: `1px solid ${isActive ? step.color : isDone ? '#10B981' : '#192436'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: isActive ? `0 0 12px ${step.color}60` : 'none', transition: 'all .4s' }}>
+                      {isActive
+                        ? <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff', animation: 'spin .8s linear infinite' }} />
+                        : isDone
+                        ? <span style={{ color: '#fff', fontSize: '11px', fontWeight: 700 }}>✓</span>
+                        : <span style={{ color: '#364A62', fontSize: '11px' }}>{step.icon}</span>
+                      }
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', fontWeight: 700, color: isActive ? step.color : isDone ? '#10B981' : '#364A62', transition: 'color .3s' }}>{step.label}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '9px', color: '#364A62', marginTop: '2px' }}>{isDone ? step.done : isActive ? step.desc : '—'}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Result preview */}
+          {phase === 'done' && (
+            <div style={{ background: 'linear-gradient(135deg,rgba(197,24,58,.1),rgba(124,58,237,.06))', border: '1px solid rgba(197,24,58,.3)', borderRadius: '14px', padding: '20px', display: 'flex', gap: '16px', alignItems: 'center', animation: 'fadeUp .4s ease' }}>
+              <div style={{ width: '80px', height: '48px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, position: 'relative', background: '#0C1222' }}>
+                <img src={THUMB_IMGS[promptIdx % THUMB_IMGS.length]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.6) saturate(0.7)' }} />
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '18px' }}>▶</span>
+                </div>
+              </div>
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: '13px', fontWeight: 700, color: '#ECF2FA', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>{fullPrompt}</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {['MP4 pronto', 'Runway ML', 'Narração PT-BR', '2:53'].map((b, i) => (
+                    <span key={i} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '8px', color: '#10B981', background: 'rgba(16,185,129,.1)', border: '1px solid rgba(16,185,129,.2)', padding: '2px 7px', borderRadius: '4px' }}>{b}</span>
+                  ))}
+                </div>
+              </div>
+              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#10B981', fontWeight: 700, flexShrink: 0 }}>✓ Feito!</div>
+            </div>
+          )}
+
+          {phase === 'idle' && (
+            <div style={{ height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', color: '#364A62' }}>Iniciando demonstração...</div>
+            </div>
+          )}
+
+          {phase === 'typing' && doneSteps.length === 0 && activeStep === -1 && (
+            <div style={{ height: '32px' }} />
+          )}
+        </div>
+      </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} } @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }`}</style>
+    </section>
+  )
+}
 
 // ── Animated hero mockup ──────────────────────────────────────────────────────
 function HeroMockup() {
@@ -444,6 +609,9 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* ── PRODUCT DEMO ── */}
+        <ProductDemo />
 
         {/* ── POWERED BY ── */}
         <div style={{ position: 'relative', zIndex: 1, borderTop: '1px solid rgba(0,0,0,.05)', padding: '20px 24px', textAlign: 'center' }}>
